@@ -1,1 +1,1 @@
-# MagazynApp
+# barcode_scanner_app
