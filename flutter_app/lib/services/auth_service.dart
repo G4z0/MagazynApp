@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../l10n/translations.dart';
 
 /// Serwis autentykacji — logowanie kontem z LogisticsERP (tabela users).
 /// Przechowuje sesję w SharedPreferences.
@@ -68,12 +69,12 @@ class AuthService {
         return {'success': true};
       }
 
-      return {'success': false, 'error': data['error'] ?? 'Błąd logowania'};
+      return {'success': false, 'error': data['error'] ?? tr('ERROR_LOGIN')};
     } on http.ClientException {
-      return {'success': false, 'error': 'Brak połączenia z serwerem'};
+      return {'success': false, 'error': tr('ERROR_NO_CONNECTION')};
     } catch (e) {
       debugPrint('Login error: $e');
-      return {'success': false, 'error': 'Błąd połączenia z serwerem'};
+      return {'success': false, 'error': tr('ERROR_SERVER_CONNECTION')};
     }
   }
 

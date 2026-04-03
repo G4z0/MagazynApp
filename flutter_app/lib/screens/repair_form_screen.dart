@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../l10n/translations.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/local_history_service.dart';
@@ -125,7 +126,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedEmployeeId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Wybierz pracownika'), backgroundColor: Colors.orange),
+        SnackBar(content: Text(tr('VALIDATION_SELECT_EMPLOYEE')), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -179,16 +180,16 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
     if (result['success'] == true) {
       await LocalHistoryService().add(
         actionType: 'repair_add',
-        title: 'Dodano naprawę: ${widget.vehicle['plate']}',
+        title: '${tr('LOG_REPAIR_ADDED')} ${widget.vehicle['plate']}',
         subtitle: '${widget.vehicle['object_label']}',
         userName: AuthService().displayName,
       );
       if (!mounted) return;
-      _showSuccessDialog(result['message'] ?? 'Naprawa dodana');
+      _showSuccessDialog(result['message'] ?? tr('REPAIR_ADDED_MESSAGE'));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result['error'] ?? 'Błąd zapisu'),
+          content: Text(result['error'] ?? tr('ERROR_SAVE')),
           backgroundColor: Colors.red,
         ),
       );
@@ -202,7 +203,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: _cardBg,
         icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-        title: const Text('Sukces!', style: TextStyle(color: Colors.white)),
+        title: Text(tr('DIALOG_SUCCESS_TITLE'), style: const TextStyle(color: Colors.white)),
         content: Text(message, style: const TextStyle(color: Colors.white70)),
         actions: [
           FilledButton(
@@ -226,7 +227,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
       appBar: AppBar(
         backgroundColor: _darkBg,
         foregroundColor: Colors.white,
-        title: const Text('Nowa naprawa'),
+        title: Text(tr('REPAIR_FORM_TITLE')),
         centerTitle: true,
       ),
       body: _isLoading
@@ -295,7 +296,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                   const SizedBox(height: 20),
 
                   // Data naprawy
-                  _sectionLabel('Data naprawy'),
+                  _sectionLabel(tr('LABEL_REPAIR_DATE')),
                   GestureDetector(
                     onTap: _pickDate,
                     child: Container(
@@ -321,7 +322,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                   const SizedBox(height: 16),
 
                   // Pracownik
-                  _sectionLabel('Pracownik *'),
+                  _sectionLabel(tr('LABEL_EMPLOYEE')),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
@@ -333,11 +334,11 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                       isExpanded: true,
                       dropdownColor: _cardBg,
                       style: const TextStyle(color: Colors.white, fontSize: 15),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         border: InputBorder.none,
-                        prefixIcon: Icon(Icons.person, color: _accent),
-                        hintText: 'Wybierz pracownika',
-                        hintStyle: TextStyle(color: _secondaryText),
+                        prefixIcon: const Icon(Icons.person, color: _accent),
+                        hintText: tr('HINT_SELECT_EMPLOYEE'),
+                        hintStyle: const TextStyle(color: _secondaryText),
                       ),
                       items: _employees.map((e) {
                         final name = '${e['firstname']} ${e['lastname']}';
@@ -351,13 +352,13 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                         );
                       }).toList(),
                       onChanged: (v) => setState(() => _selectedEmployeeId = v),
-                      validator: (v) => v == null ? 'Wymagane' : null,
+                      validator: (v) => v == null ? tr('VALIDATION_REQUIRED') : null,
                     ),
                   ),
                   const SizedBox(height: 16),
 
                   // Przebieg
-                  _sectionLabel('Przebieg (km)'),
+                  _sectionLabel(tr('LABEL_MILEAGE')),
                   _buildTextField(
                     controller: _mileageController,
                     icon: Icons.speed,
@@ -367,7 +368,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                   const SizedBox(height: 16),
 
                   // Koszt robocizny
-                  _sectionLabel('Koszt robocizny (PLN)'),
+                  _sectionLabel(tr('LABEL_LABOUR_COST')),
                   _buildTextField(
                     controller: _laborCostController,
                     icon: Icons.payments,
@@ -378,7 +379,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
 
                   // Usługi warsztatowe
                   if (_serviceGroups.isNotEmpty) ...[
-                    _sectionLabel('Usługi warsztatowe'),
+                      _sectionLabel(tr('LABEL_WORKSHOP_SERVICES')),
                     ..._serviceGroups.map((group) => _buildServiceGroup(group)),
                     const SizedBox(height: 8),
                   ],
@@ -386,12 +387,12 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                   // Custom services
                   Row(
                     children: [
-                      _sectionLabel('Usługi własne'),
+                      _sectionLabel(tr('LABEL_CUSTOM_SERVICES')),
                       const Spacer(),
                       TextButton.icon(
                         onPressed: _addCustomService,
                         icon: const Icon(Icons.add, size: 18, color: _accent),
-                        label: const Text('Dodaj', style: TextStyle(color: _accent)),
+                        label: Text(tr('BUTTON_ADD'), style: const TextStyle(color: _accent)),
                       ),
                     ],
                   ),
@@ -401,12 +402,12 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                   // Wykorzystane części
                   Row(
                     children: [
-                      _sectionLabel('Wykorzystane części'),
+                      _sectionLabel(tr('LABEL_USED_PARTS')),
                       const Spacer(),
                       TextButton.icon(
                         onPressed: _showPartsSearchDialog,
                         icon: const Icon(Icons.add, size: 18, color: _accent),
-                        label: const Text('Dodaj', style: TextStyle(color: _accent)),
+                        label: Text(tr('BUTTON_ADD'), style: const TextStyle(color: _accent)),
                       ),
                     ],
                   ),
@@ -420,18 +421,18 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                         color: _cardBg,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Center(
-                        child: Text('Brak wybranych części', style: TextStyle(color: _secondaryText, fontSize: 13)),
+                      child: Center(
+                        child: Text(tr('REPAIR_NO_PARTS'), style: const TextStyle(color: _secondaryText, fontSize: 13)),
                       ),
                     ),
                   const SizedBox(height: 16),
 
                   // Notatka
-                  _sectionLabel('Notatka'),
+                  _sectionLabel(tr('LABEL_NOTE')),
                   _buildTextField(
                     controller: _noteController,
                     icon: Icons.note,
-                    hint: 'Opis naprawy, uwagi...',
+                    hint: tr('HINT_REPAIR_NOTE'),
                     maxLines: 3,
                   ),
                   const SizedBox(height: 24),
@@ -456,7 +457,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                             )
                           : const Icon(Icons.build, color: Colors.white),
                       label: Text(
-                        _isSaving ? 'Zapisywanie...' : 'Dodaj naprawę',
+                        _isSaving ? tr('BUTTON_SAVING') : tr('BUTTON_ADD_REPAIR'),
                         style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -551,27 +552,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           style: const TextStyle(color: Colors.white, fontSize: 13),
                           decoration: InputDecoration(
-                            hintText: 'Kwota PLN',
-                            hintStyle: TextStyle(color: _secondaryText.withAlpha(120), fontSize: 12),
-                            filled: true,
-                            fillColor: _inputBg,
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        flex: 3,
-                        child: TextField(
-                          controller: _serviceNoteControllers[svcId],
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                          decoration: InputDecoration(
-                            hintText: 'Notatka',
+                            hintText: tr('HINT_AMOUNT_PLN'),
                             hintStyle: TextStyle(color: _secondaryText.withAlpha(120), fontSize: 12),
                             filled: true,
                             fillColor: _inputBg,
@@ -729,7 +710,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                   controller: cs.nameController,
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'Nazwa usługi',
+                    hintText: tr('HINT_SERVICE_NAME'),
                     hintStyle: const TextStyle(color: _secondaryText, fontSize: 13),
                     filled: true,
                     fillColor: _inputBg,
@@ -759,7 +740,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
-                    hintText: 'Kwota PLN',
+                    hintText: tr('HINT_AMOUNT_PLN'),
                     hintStyle: TextStyle(color: _secondaryText.withAlpha(120), fontSize: 12),
                     filled: true,
                     fillColor: _inputBg,
@@ -779,7 +760,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                   controller: cs.noteController,
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
-                    hintText: 'Notatka',
+                    hintText: tr('HINT_NOTE'),
                     hintStyle: TextStyle(color: _secondaryText.withAlpha(120), fontSize: 12),
                     filled: true,
                     fillColor: _inputBg,
@@ -902,11 +883,11 @@ class _PartsSearchSheetState extends State<_PartsSearchSheet> {
             ),
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Wybierz część',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            tr('PARTS_SHEET_TITLE'),
+            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
         const SizedBox(height: 12),
@@ -918,7 +899,7 @@ class _PartsSearchSheetState extends State<_PartsSearchSheet> {
             autofocus: true,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              hintText: 'Szukaj po nazwie lub kodzie...',
+                hintText: tr('PARTS_SEARCH_HINT'),
               hintStyle: const TextStyle(color: Colors.white38),
               filled: true,
               fillColor: _inputBg,
@@ -938,9 +919,9 @@ class _PartsSearchSheetState extends State<_PartsSearchSheet> {
           child: _isLoading
               ? const Center(child: CircularProgressIndicator(color: _accent))
               : _parts.isEmpty
-                  ? const Center(
-                      child: Text('Brak dostępnych części',
-                          style: TextStyle(color: Colors.white38)),
+                  ? Center(
+                      child: Text(tr('PARTS_EMPTY'),
+                          style: const TextStyle(color: Colors.white38)),
                     )
                   : ListView.builder(
                       controller: widget.scrollController,
@@ -949,7 +930,7 @@ class _PartsSearchSheetState extends State<_PartsSearchSheet> {
                       itemBuilder: (_, i) {
                         final p = _parts[i];
                         final barcode = p['barcode'] ?? '';
-                        final name = p['product_name'] ?? 'Bez nazwy';
+                        final name = p['product_name'] ?? tr('PRODUCT_NO_NAME');
                         final unit = p['unit'] ?? 'szt';
                         final stock = double.tryParse(p['current_stock'].toString()) ?? 0;
                         final key = '${barcode}_$unit';

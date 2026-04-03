@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/translations.dart';
 import '../services/local_history_service.dart';
 
 /// Ekran historii działań wykonanych NA TYM urządzeniu.
@@ -33,18 +34,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: _cardBg,
-        title: const Text('Wyczyść historię', style: TextStyle(color: Colors.white)),
-        content: const Text('Czy na pewno chcesz usunąć całą historię z tego urządzenia?',
-            style: TextStyle(color: _secondaryText)),
+        title: Text(tr('DIALOG_CLEAR_HISTORY_TITLE'), style: const TextStyle(color: Colors.white)),
+        content: Text(tr('DIALOG_CLEAR_HISTORY_CONTENT'),
+            style: const TextStyle(color: _secondaryText)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Anuluj', style: TextStyle(color: _secondaryText)),
+            child: Text(tr('BUTTON_CANCEL'), style: const TextStyle(color: _secondaryText)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Wyczyść'),
+            child: Text(tr('BUTTON_CLEAR')),
           ),
         ],
       ),
@@ -89,8 +90,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final diff = today.difference(date).inDays;
 
     final time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    if (diff == 0) return 'Dzisiaj $time';
-    if (diff == 1) return 'Wczoraj $time';
+    if (diff == 0) return tr('DATE_TODAY', args: {'time': time});
+    if (diff == 1) return tr('DATE_YESTERDAY', args: {'time': time});
     return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} $time';
   }
 
@@ -103,16 +104,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
             padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
             child: Row(
               children: [
-                const Text(
-                  'Historia działań',
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                Text(
+                  tr('HISTORY_TITLE'),
+                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 if (_items.isNotEmpty)
                   IconButton(
                     icon: const Icon(Icons.delete_outline, color: _secondaryText),
                     onPressed: _clearHistory,
-                    tooltip: 'Wyczyść historię',
+                    tooltip: tr('TOOLTIP_CLEAR_HISTORY'),
                   ),
               ],
             ),
@@ -128,15 +129,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
       return const Center(child: CircularProgressIndicator(color: _accent));
     }
     if (_items.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.history, color: Color(0xFFA0A5B1), size: 64),
-            SizedBox(height: 12),
-            Text('Brak historii', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 6),
-            Text('Wykonaj akcję aby zobaczyć ją tutaj', style: TextStyle(color: Color(0xFFA0A5B1), fontSize: 13)),
+            const Icon(Icons.history, color: Color(0xFFA0A5B1), size: 64),
+            const SizedBox(height: 12),
+            Text(tr('HISTORY_EMPTY_TITLE'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            Text(tr('HISTORY_EMPTY_SUBTITLE'), style: const TextStyle(color: Color(0xFFA0A5B1), fontSize: 13)),
           ],
         ),
       );

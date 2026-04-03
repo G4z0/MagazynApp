@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import '../l10n/translations.dart';
 import '../services/workshop_api_service.dart';
 import 'repair_form_screen.dart';
 
@@ -37,7 +38,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
-        setState(() => _initError = 'Brak dostępnych kamer');
+        setState(() => _initError = tr('ERROR_NO_CAMERAS'));
         return;
       }
       final back = cameras.firstWhere(
@@ -48,7 +49,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
       await _camera!.initialize();
       if (mounted) setState(() => _isInitialized = true);
     } catch (e) {
-      if (mounted) setState(() => _initError = 'Błąd kamery: $e');
+      if (mounted) setState(() => _initError = tr('ERROR_CAMERA', args: {'error': '$e'}));
     }
   }
 
@@ -153,7 +154,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
         setState(() => _isProcessing = false);
 
         if (combined.isEmpty) {
-          _showSnack('Nie rozpoznano tablicy rejestracyjnej', Colors.orange);
+          _showSnack(tr('PLATE_NOT_RECOGNIZED'), Colors.orange);
           return;
         }
 
@@ -168,7 +169,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isProcessing = false);
-        _showSnack('Błąd OCR: $e', Colors.red);
+        _showSnack(tr('ERROR_OCR', args: {'error': '$e'}), Colors.red);
       }
     }
   }
@@ -190,9 +191,9 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
             ),
-            const Text('Rozpoznane tablice', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+            Text(tr('PLATE_RESULTS_TITLE'), style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            const Text('Wybierz właściwą tablicę', style: TextStyle(color: _secondaryText, fontSize: 13)),
+            Text(tr('PLATE_RESULTS_SUBTITLE'), style: const TextStyle(color: _secondaryText, fontSize: 13)),
             const SizedBox(height: 16),
             ...plates.map((plate) => Container(
               width: double.infinity,
@@ -231,13 +232,13 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const AlertDialog(
+      builder: (_) => AlertDialog(
         backgroundColor: _cardBg,
         content: Row(
           children: [
-            CircularProgressIndicator(color: _accent),
-            SizedBox(width: 20),
-            Text('Szukam pojazdu...', style: TextStyle(color: Colors.white)),
+            const CircularProgressIndicator(color: _accent),
+            const SizedBox(width: 20),
+            Text(tr('PLATE_SEARCHING'), style: const TextStyle(color: Colors.white)),
           ],
         ),
       ),
@@ -249,7 +250,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
     Navigator.pop(context); // zamknij loading
 
     if (result['success'] != true) {
-      _showSnack(result['error'] ?? 'Błąd wyszukiwania', Colors.red);
+      _showSnack(result['error'] ?? tr('ERROR_SEARCH'), Colors.red);
       return;
     }
 
@@ -272,9 +273,9 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: _cardBg,
         icon: const Icon(Icons.search_off, color: Colors.orange, size: 48),
-        title: const Text('Nie znaleziono', style: TextStyle(color: Colors.white)),
+        title: Text(tr('PLATE_NOT_FOUND_TITLE'), style: const TextStyle(color: Colors.white)),
         content: Text(
-          'Nie znaleziono pojazdu/naczepy o tablicy:\n$plate',
+          tr('PLATE_NOT_FOUND_CONTENT', args: {'plate': plate}),
           textAlign: TextAlign.center,
           style: const TextStyle(color: _secondaryText),
         ),
@@ -306,7 +307,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
             ),
-            const Text('Znalezione pojazdy', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+            Text(tr('PLATE_VEHICLES_FOUND'), style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             ...vehicles.map((v) => Container(
               width: double.infinity,
@@ -373,14 +374,14 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: _cardBg,
-        title: const Text('Wpisz tablicę', style: TextStyle(color: Colors.white)),
+        title: Text(tr('DIALOG_ENTER_PLATE_TITLE'), style: const TextStyle(color: Colors.white)),
         content: TextField(
           controller: _manualController,
           autofocus: true,
           textCapitalization: TextCapitalization.characters,
           style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 2),
           decoration: InputDecoration(
-            hintText: 'np. WX12345',
+            hintText: tr('DIALOG_ENTER_PLATE_HINT'),
             hintStyle: const TextStyle(color: _secondaryText),
             filled: true,
             fillColor: const Color(0xFF23262E),
@@ -399,7 +400,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Anuluj', style: TextStyle(color: _secondaryText)),
+            child: Text(tr('BUTTON_CANCEL'), style: const TextStyle(color: _secondaryText)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: _accent),
@@ -410,7 +411,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
                 _searchPlate(v.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), ''));
               }
             },
-            child: const Text('Szukaj'),
+            child: Text(tr('BUTTON_SEARCH')),
           ),
         ],
       ),
@@ -435,14 +436,14 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
-          title: const Text('Skanuj tablicę'),
+          title: Text(tr('PLATE_SCANNER_TITLE')),
           centerTitle: true,
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
           actions: [
             IconButton(
               icon: const Icon(Icons.keyboard),
-              tooltip: 'Wpisz ręcznie',
+              tooltip: tr('TOOLTIP_ENTER_MANUALLY'),
               onPressed: _showManualEntry,
             ),
           ],
@@ -470,13 +471,13 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
     }
 
     if (!_isInitialized || _camera == null) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: Colors.white),
-            SizedBox(height: 16),
-            Text('Uruchamianie kamery...', style: TextStyle(color: Colors.white70)),
+            const CircularProgressIndicator(color: Colors.white),
+            const SizedBox(height: 16),
+            Text(tr('CAMERA_STARTING'), style: const TextStyle(color: Colors.white70)),
           ],
         ),
       );
@@ -506,10 +507,10 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
             Positioned(
               top: (constraints.maxHeight - scanH) / 2 - 40,
               left: 0, right: 0,
-              child: const Text(
-                'Umieść tablicę w ramce',
+              child: Text(
+                tr('PLATE_INSTRUCTION'),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70, fontSize: 14),
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
             ),
 

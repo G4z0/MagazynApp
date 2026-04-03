@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../l10n/translations.dart';
 import '../services/api_service.dart';
 
 /// Ekran stanów magazynowych — lista produktów z aktualnym stanem.
@@ -51,7 +52,7 @@ class _StockScreenState extends State<StockScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Błąd połączenia z serwerem';
+          _error = tr('ERROR_SERVER_CONNECTION');
           _isLoading = false;
         });
       }
@@ -76,10 +77,10 @@ class _StockScreenState extends State<StockScreen> {
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Stany magazynowe',
-                    style: TextStyle(
+                    tr('STOCK_TITLE'),
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -92,7 +93,7 @@ class _StockScreenState extends State<StockScreen> {
                     Icons.refresh,
                     color: _isLoading ? Colors.white24 : accent,
                   ),
-                  tooltip: 'Odśwież',
+                  tooltip: tr('BUTTON_REFRESH'),
                 ),
               ],
             ),
@@ -105,7 +106,7 @@ class _StockScreenState extends State<StockScreen> {
               controller: _searchController,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                hintText: 'Szukaj po nazwie lub kodzie...',
+                hintText: tr('STOCK_SEARCH_HINT'),
                 hintStyle: const TextStyle(color: Colors.white38),
                 filled: true,
                 fillColor: cardBg,
@@ -163,7 +164,7 @@ class _StockScreenState extends State<StockScreen> {
             TextButton.icon(
               onPressed: () => _loadProducts(search: _searchController.text.trim()),
               icon: const Icon(Icons.refresh),
-              label: const Text('Ponów'),
+              label: Text(tr('BUTTON_RETRY')),
             ),
           ],
         ),
@@ -179,8 +180,8 @@ class _StockScreenState extends State<StockScreen> {
             const SizedBox(height: 12),
             Text(
               _searchController.text.isNotEmpty
-                  ? 'Brak wyników dla "${_searchController.text}"'
-                  : 'Brak produktów w magazynie',
+                  ? tr('STOCK_NO_RESULTS', args: {'query': _searchController.text})
+                  : tr('STOCK_EMPTY'),
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white38, fontSize: 14),
             ),
@@ -201,7 +202,7 @@ class _StockScreenState extends State<StockScreen> {
   }
 
   Widget _buildProductCard(Map<String, dynamic> product) {
-    final name = product['product_name'] ?? 'Bez nazwy';
+    final name = product['product_name'] ?? tr('PRODUCT_NO_NAME');
     final barcode = product['barcode'] ?? '';
     final unit = product['unit'] ?? 'szt';
     final currentStock = double.tryParse(product['current_stock'].toString()) ?? 0;
@@ -364,7 +365,7 @@ class _StockScreenState extends State<StockScreen> {
             ),
             if (data != null) ...[
               Text(
-                data['product_name'] ?? 'Bez nazwy',
+                data['product_name'] ?? tr('PRODUCT_NO_NAME'),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -383,9 +384,9 @@ class _StockScreenState extends State<StockScreen> {
               const SizedBox(height: 16),
             ],
             if (movements.isNotEmpty) ...[
-              const Text(
-                'Historia przedmiotów',
-                style: TextStyle(color: secondaryText, fontSize: 13),
+              Text(
+                tr('STOCK_ITEM_HISTORY'),
+                style: const TextStyle(color: secondaryText, fontSize: 13),
               ),
               const SizedBox(height: 8),
               ...movements.map((m) {
@@ -452,11 +453,11 @@ class _StockScreenState extends State<StockScreen> {
                 );
               }),
             ] else
-              const Center(
+              Center(
                 child: Padding(
-                  padding: EdgeInsets.all(32),
-                  child: Text('Brak ruchów',
-                      style: TextStyle(color: Colors.white38)),
+                  padding: const EdgeInsets.all(32),
+                  child: Text(tr('STOCK_NO_MOVEMENTS'),
+                      style: const TextStyle(color: Colors.white38)),
                 ),
               ),
           ],
@@ -481,8 +482,8 @@ class _StockScreenState extends State<StockScreen> {
   }
 
   String _pluralProducts(int count) {
-    if (count == 1) return 'produkt';
-    if (count >= 2 && count <= 4) return 'produkty';
-    return 'produktów';
+    if (count == 1) return tr('PRODUCT_SINGULAR');
+    if (count >= 2 && count <= 4) return tr('PRODUCT_PLURAL_FEW');
+    return tr('PRODUCT_PLURAL_MANY');
   }
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../l10n/translations.dart';
+import '../main.dart';
 import '../services/auth_service.dart';
 import '../services/local_history_service.dart';
 import '../services/offline_queue_service.dart';
@@ -28,21 +30,21 @@ class SettingsScreen extends StatelessWidget {
           ),
           child: const Icon(Icons.warehouse, color: Colors.white, size: 28),
         ),
-        title: const Text('Magazyn', style: TextStyle(color: Colors.white)),
-        content: const Column(
+        title: Text(tr('SETTINGS_ABOUT_TITLE'), style: const TextStyle(color: Colors.white)),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Wersja 1.0', style: TextStyle(color: _secondaryText, fontSize: 14)),
-            SizedBox(height: 8),
+            Text(tr('SETTINGS_VERSION'), style: const TextStyle(color: _secondaryText, fontSize: 14)),
+            const SizedBox(height: 8),
             Text(
-              'Aplikacja do zarządzania stanami magazynowymi zintegrowana z systemem LogisticsERP.',
+              tr('SETTINGS_ABOUT_DESCRIPTION'),
               textAlign: TextAlign.center,
-              style: TextStyle(color: _secondaryText, fontSize: 13),
+              style: const TextStyle(color: _secondaryText, fontSize: 13),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
-              'Funkcje:\n• Skanowanie kodów kreskowych\n• Przyjęcia i wydania towarów\n• Sprawdzanie stanów magazynowych\n• Tryb offline z automatyczną synchronizacją\n• OCR rozpoznawanie tekstu',
-              style: TextStyle(color: _secondaryText, fontSize: 12),
+              tr('SETTINGS_ABOUT_FEATURES'),
+              style: const TextStyle(color: _secondaryText, fontSize: 12),
             ),
           ],
         ),
@@ -61,13 +63,13 @@ class SettingsScreen extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const AlertDialog(
+      builder: (_) => AlertDialog(
         backgroundColor: cardBg,
         content: Row(
           children: [
-            CircularProgressIndicator(color: accent),
-            SizedBox(width: 20),
-            Text('Sprawdzanie połączenia...', style: TextStyle(color: Colors.white)),
+            const CircularProgressIndicator(color: accent),
+            const SizedBox(width: 20),
+            Text(tr('SETTINGS_CHECKING_CONNECTION'), style: const TextStyle(color: Colors.white)),
           ],
         ),
       ),
@@ -84,21 +86,21 @@ class SettingsScreen extends StatelessWidget {
           .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200 || response.statusCode == 400) {
-        status = 'Połączono';
+        status = tr('STATUS_CONNECTED');
         icon = Icons.check_circle;
         iconColor = Colors.green;
-        details = 'Serwer $_serverHost odpowiada poprawnie.\nCzas odpowiedzi: OK';
+        details = tr('STATUS_CONNECTED_DETAIL', args: {'host': _serverHost});
       } else {
-        status = 'Błąd serwera';
+        status = tr('STATUS_SERVER_ERROR');
         icon = Icons.warning;
         iconColor = Colors.orange;
-        details = 'Serwer odpowiedział kodem: ${response.statusCode}';
+        details = tr('STATUS_SERVER_ERROR_DETAIL', args: {'code': '${response.statusCode}'});
       }
     } catch (e) {
-      status = 'Brak połączenia';
+      status = tr('STATUS_NO_CONNECTION');
       icon = Icons.cancel;
       iconColor = Colors.red;
-      details = 'Nie można połączyć się z serwerem $_serverHost.\n\nSprawdź czy urządzenie jest w sieci WiFi firmy.';
+      details = tr('STATUS_NO_CONNECTION_DETAIL', args: {'host': _serverHost});
     }
 
     if (!context.mounted) return;
@@ -175,7 +177,7 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.cloud_upload, color: accent, size: 24),
                 const SizedBox(width: 10),
-                const Text('Kolejka offline', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(tr('SETTINGS_OFFLINE_QUEUE'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -195,24 +197,24 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             if (count == 0)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
+                Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
                   child: Column(
                     children: [
-                      Icon(Icons.cloud_done, color: Colors.green, size: 40),
-                      SizedBox(height: 8),
-                      Text('Wszystko zsynchronizowane', style: TextStyle(color: _secondaryText, fontSize: 14)),
-                      SizedBox(height: 4),
-                      Text('Brak oczekujących zapisów', style: TextStyle(color: _secondaryText, fontSize: 12)),
+                      const Icon(Icons.cloud_done, color: Colors.green, size: 40),
+                      const SizedBox(height: 8),
+                      Text(tr('QUEUE_ALL_SYNCED'), style: const TextStyle(color: _secondaryText, fontSize: 14)),
+                      const SizedBox(height: 4),
+                      Text(tr('QUEUE_NO_PENDING'), style: const TextStyle(color: _secondaryText, fontSize: 12)),
                     ],
                   ),
                 ),
               )
             else ...[
               Text(
-                'Oczekujące zapisy zostaną wysłane automatycznie po przywróceniu połączenia WiFi.',
-                style: TextStyle(color: _secondaryText, fontSize: 13),
+                tr('QUEUE_PENDING_INFO'),
+                style: const TextStyle(color: _secondaryText, fontSize: 13),
               ),
               const SizedBox(height: 12),
               ConstrainedBox(
@@ -223,7 +225,7 @@ class SettingsScreen extends StatelessWidget {
                   separatorBuilder: (_, __) => const SizedBox(height: 6),
                   itemBuilder: (_, i) {
                     final item = items[i];
-                    final type = item['movement_type'] == 'in' ? 'Przyjęcie' : 'Wydanie';
+                    final type = item['movement_type'] == 'in' ? tr('LOG_STOCK_IN') : tr('LOG_STOCK_OUT');
                     final icon = item['movement_type'] == 'in' ? Icons.add_circle : Icons.remove_circle;
                     final color = item['movement_type'] == 'in' ? Colors.green : Colors.orange;
                     return Container(
@@ -268,14 +270,81 @@ class SettingsScreen extends StatelessWidget {
                     Navigator.pop(ctx);
                     OfflineQueueService().syncQueue();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Próba synchronizacji...'), duration: Duration(seconds: 2)),
+                      SnackBar(content: Text(tr('QUEUE_SYNC_ATTEMPT')), duration: const Duration(seconds: 2)),
                     );
                   },
                   icon: const Icon(Icons.sync, color: Colors.white),
-                  label: const Text('Wymuś synchronizację'),
+                  label: Text(tr('BUTTON_FORCE_SYNC')),
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLanguagePicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+            ),
+            Row(
+              children: [
+                const Icon(Icons.translate, color: accent, size: 24),
+                const SizedBox(width: 10),
+                Text(tr('SETTINGS_LANGUAGE'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...availableLanguages.map((lang) {
+              final isSelected = lang['code'] == currentLang;
+              return Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 6),
+                child: Material(
+                  color: isSelected ? accent.withAlpha(30) : const Color(0xFF23262E),
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      if (lang['code'] != currentLang) {
+                        await setLanguage(lang['code']!);
+                        if (context.mounted) {
+                          MagazynApp.restartApp(context);
+                        }
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          Text(lang['flag']!, style: const TextStyle(fontSize: 24)),
+                          const SizedBox(width: 14),
+                          Text(lang['name']!, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+                          const Spacer(),
+                          if (isSelected)
+                            const Icon(Icons.check_circle, color: accent, size: 22),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
           ],
         ),
       ),
@@ -287,17 +356,17 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: cardBg,
-        title: const Text('Wyloguj się', style: TextStyle(color: Colors.white)),
-        content: const Text('Czy na pewno chcesz się wylogować?', style: TextStyle(color: _secondaryText)),
+        title: Text(tr('DIALOG_LOGOUT_TITLE'), style: const TextStyle(color: Colors.white)),
+        content: Text(tr('DIALOG_LOGOUT_CONTENT'), style: const TextStyle(color: _secondaryText)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Anuluj', style: TextStyle(color: _secondaryText)),
+            child: Text(tr('BUTTON_CANCEL'), style: const TextStyle(color: _secondaryText)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Wyloguj'),
+            child: Text(tr('BUTTON_LOGOUT')),
           ),
         ],
       ),
@@ -305,7 +374,7 @@ class SettingsScreen extends StatelessWidget {
     if (confirmed == true && context.mounted) {
       await LocalHistoryService().add(
         actionType: 'logout',
-        title: 'Wylogowano',
+        title: tr('LOG_LOGOUT'),
         subtitle: AuthService().displayName,
         userName: AuthService().displayName,
       );
@@ -327,11 +396,11 @@ class SettingsScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
         children: [
-          const Padding(
-            padding: EdgeInsets.only(left: 4, bottom: 16),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 16),
             child: Text(
-              'Więcej',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+              tr('SETTINGS_TITLE'),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),
           // Karta użytkownika
@@ -358,7 +427,7 @@ class SettingsScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        auth.displayName ?? 'Użytkownik',
+                        auth.displayName ?? tr('USER_FALLBACK_NAME'),
                         style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 2),
@@ -374,27 +443,33 @@ class SettingsScreen extends StatelessWidget {
           ),
           _SettingsTile(
             icon: Icons.info_outline,
-            label: 'O aplikacji',
-            subtitle: 'Magazyn v1.0 — LogisticsERP',
+            label: tr('SETTINGS_ABOUT'),
+            subtitle: tr('SETTINGS_ABOUT_SUBTITLE'),
             onTap: () => _showAbout(context),
           ),
           _SettingsTile(
             icon: Icons.wifi,
-            label: 'Serwer API',
+            label: tr('SETTINGS_API_SERVER'),
             subtitle: _serverHost,
             onTap: () => _checkServer(context),
           ),
           _SettingsTile(
             icon: Icons.cloud_upload,
-            label: 'Kolejka offline',
-            subtitle: 'Sprawdź oczekujące zapisy',
+            label: tr('SETTINGS_OFFLINE_QUEUE_TILE'),
+            subtitle: tr('SETTINGS_OFFLINE_QUEUE_SUBTITLE'),
             onTap: () => _showOfflineQueue(context),
+          ),
+          _SettingsTile(
+            icon: Icons.translate,
+            label: tr('SETTINGS_LANGUAGE'),
+            subtitle: availableLanguages.firstWhere((l) => l['code'] == currentLang, orElse: () => availableLanguages.first)['name']!,
+            onTap: () => _showLanguagePicker(context),
           ),
           const SizedBox(height: 8),
           _SettingsTile(
             icon: Icons.logout,
-            label: 'Wyloguj się',
-            subtitle: 'Wróć do ekranu logowania',
+            label: tr('SETTINGS_LOGOUT'),
+            subtitle: tr('SETTINGS_LOGOUT_SUBTITLE'),
             onTap: () => _logout(context),
             iconColor: Colors.red,
           ),

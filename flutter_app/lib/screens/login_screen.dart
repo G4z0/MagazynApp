@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/translations.dart';
 import '../services/auth_service.dart';
 import '../services/local_history_service.dart';
 import 'home_screen.dart';
@@ -49,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (result['success'] == true) {
       await LocalHistoryService().add(
         actionType: 'login',
-        title: 'Zalogowano',
+        title: tr('LOGIN_SUCCESS_LOG'),
         subtitle: AuthService().displayName,
         userName: AuthService().displayName,
       );
@@ -90,18 +91,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Icon(Icons.warehouse, color: Colors.white, size: 40),
                   ),
                   const SizedBox(height: 24),
-                  const Text(
-                    'Magazyn',
-                    style: TextStyle(
+                  Text(
+                    tr('LOGIN_TITLE'),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Zaloguj się kontem LogisticsERP',
-                    style: TextStyle(color: _secondaryText, fontSize: 14),
+                  Text(
+                    tr('LOGIN_SUBTITLE'),
+                    style: const TextStyle(color: _secondaryText, fontSize: 14),
                   ),
                   const SizedBox(height: 40),
 
@@ -138,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     autocorrect: false,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      labelText: 'Email',
+                      labelText: tr('LABEL_EMAIL'),
                       labelStyle: const TextStyle(color: _secondaryText),
                       prefixIcon: const Icon(Icons.email_outlined, color: _accent),
                       filled: true,
@@ -153,8 +154,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Podaj email';
-                      if (!v.contains('@')) return 'Nieprawidłowy email';
+                      if (v == null || v.trim().isEmpty) return tr('VALIDATION_EMAIL_REQUIRED');
+                      if (!v.contains('@')) return tr('VALIDATION_EMAIL_INVALID');
                       return null;
                     },
                     textInputAction: TextInputAction.next,
@@ -167,7 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: _obscurePassword,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      labelText: 'Hasło',
+                      labelText: tr('LABEL_PASSWORD'),
                       labelStyle: const TextStyle(color: _secondaryText),
                       prefixIcon: const Icon(Icons.lock_outlined, color: _accent),
                       suffixIcon: IconButton(
@@ -189,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'Podaj hasło';
+                      if (v == null || v.isEmpty) return tr('VALIDATION_PASSWORD_REQUIRED');
                       return null;
                     },
                     onFieldSubmitted: (_) => _login(),
@@ -219,9 +220,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text(
-                              'Zaloguj się',
-                              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                          : Text(
+                              tr('BUTTON_SIGN_IN'),
+                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                             ),
                     ),
                   ),

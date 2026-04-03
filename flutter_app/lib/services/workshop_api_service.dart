@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../l10n/translations.dart';
 
 /// Serwis komunikacji z API warsztatowym (naprawy, naczepy, pojazdy).
 class WorkshopApiService {
@@ -15,7 +16,7 @@ class WorkshopApiService {
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
       return jsonDecode(response.body) as Map<String, dynamic>;
     } catch (e) {
-      return {'success': false, 'error': 'Brak połączenia z serwerem'};
+      return {'success': false, 'error': tr('ERROR_NO_CONNECTION')};
     }
   }
 
@@ -86,7 +87,7 @@ class WorkshopApiService {
 
       return jsonDecode(response.body) as Map<String, dynamic>;
     } catch (e) {
-      return {'success': false, 'error': 'Brak połączenia z serwerem'};
+      return {'success': false, 'error': tr('ERROR_NO_CONNECTION')};
     }
   }
 }

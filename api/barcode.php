@@ -158,8 +158,31 @@ function handlePost($db) {
  *   ?list=1                - Pobierz listę wszystkich produktów ze stanami
  *   ?list=1&search=nazwa   - Szukaj po nazwie produktu lub kodzie
  *   ?parts=1               - Pobierz dostępne części (stan > 0), opcja ?search=
+ *   ?low_stock=1           - Produkty z zerowym lub niskim stanem
  */
 function handleGet($db) {
+    // Alerty niskiego stanu (stan <= 0)
+    if (isset($_GET['low_stock'])) {
+        $stmt = $db->prepare("
+            SELECT
+                barcode,
+                MAX(product_name) AS product_name,
+                unit,
+                COALESCE(SUM(CASE WHEN movement_type = 'in' THEN quantity ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN movement_type = 'out' THEN quantity ELSE 0 END), 0) AS current_stock
+            FROM stock_movements
+            GROUP BY barcode, unit
+            HAVING current_stock < 5
+            ORDER BY current_stock ASC, MAX(product_name) ASC
+            LIMIT 20
+        ");
+        $stmt->execute();
+        $items = $stmt->fetchAll();
+
+        echo json_encode(['success' => true, 'items' => $items]);
+        return;
+    }
+
     // Lista dostępnych części (stan > 0) — do wyboru w formularzu naprawy
     if (isset($_GET['parts'])) {
         $search = isset($_GET['search']) ? trim($_GET['search']) : '';

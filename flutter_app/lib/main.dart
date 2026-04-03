@@ -1,40 +1,61 @@
 import 'package:flutter/material.dart';
+import 'l10n/translations.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/auth_service.dart';
 import 'services/offline_queue_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initTranslations();
   OfflineQueueService().startListening();
-  runApp(const MagazynApp());
+  runApp(MagazynApp());
 }
 
-class MagazynApp extends StatelessWidget {
-  const MagazynApp({super.key});
+class MagazynApp extends StatefulWidget {
+  MagazynApp({super.key});
 
   static const Color accent = Color(0xFF3498DB);
   static const Color darkBg = Color(0xFF1C1E26);
   static const Color cardBg = Color(0xFF2C2F3A);
 
+  static final _navKey = GlobalKey<NavigatorState>();
+  static GlobalKey<NavigatorState> get navKey => _navKey;
+
+  /// Call after setLanguage() to rebuild the entire widget tree.
+  static void restartApp(BuildContext context) {
+    context.findAncestorStateOfType<_MagazynAppState>()?.restart();
+  }
+
+  @override
+  State<MagazynApp> createState() => _MagazynAppState();
+}
+
+class _MagazynAppState extends State<MagazynApp> {
+  Key _appKey = UniqueKey();
+
+  void restart() => setState(() => _appKey = UniqueKey());
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Magazyn - LogisticsERP',
+      key: _appKey,
+      navigatorKey: MagazynApp.navKey,
+      title: tr('APP_TITLE'),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: darkBg,
-        colorSchemeSeed: accent,
+        scaffoldBackgroundColor: MagazynApp.darkBg,
+        colorSchemeSeed: MagazynApp.accent,
         useMaterial3: true,
         cardTheme: CardThemeData(
-          color: cardBg,
+          color: MagazynApp.cardBg,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: darkBg,
+          backgroundColor: MagazynApp.darkBg,
           foregroundColor: Colors.white,
           elevation: 0,
         ),
@@ -69,8 +90,17 @@ class _AuthGateState extends State<_AuthGate> {
   @override
   Widget build(BuildContext context) {
     if (_checking) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: MagazynApp.accent)),
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset('assets/logo.png', width: 220),
+              const SizedBox(height: 32),
+              const CircularProgressIndicator(color: MagazynApp.accent),
+            ],
+          ),
+        ),
       );
     }
     return _loggedIn ? const HomeScreen() : const LoginScreen();

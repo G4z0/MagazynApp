@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/translations.dart';
 import '../models/code_type.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -36,23 +37,23 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   /// Jednostki bazowe (do przeliczenia z opakowania)
   static const _baseUnits = [
-    (value: 'szt', label: 'Sztuki'),
-    (value: 'l', label: 'Litry'),
-    (value: 'kg', label: 'Kilogramy'),
-    (value: 'm', label: 'Metry'),
+    (value: 'szt', key: 'UNIT_PIECES'),
+    (value: 'l', key: 'UNIT_LITRES'),
+    (value: 'kg', key: 'UNIT_KILOGRAMS'),
+    (value: 'm', key: 'UNIT_METRES'),
   ];
 
   // Dane ze serwera
   List<Map<String, dynamic>> _stockByUnit = [];
   List<Map<String, dynamic>> _movements = [];
 
-  static const List<({String value, String label, IconData icon})> _units = [
-    (value: 'szt', label: 'Sztuki', icon: Icons.inventory_2),
-    (value: 'opak', label: 'Opakowania', icon: Icons.archive),
-    (value: 'l', label: 'Litry', icon: Icons.water_drop),
-    (value: 'kg', label: 'Kilogramy', icon: Icons.scale),
-    (value: 'm', label: 'Metry', icon: Icons.straighten),
-    (value: 'kpl', label: 'Komplety', icon: Icons.widgets),
+  static const List<({String value, String key, IconData icon})> _units = [
+    (value: 'szt', key: 'UNIT_PIECES', icon: Icons.inventory_2),
+    (value: 'opak', key: 'UNIT_PACKAGES', icon: Icons.archive),
+    (value: 'l', key: 'UNIT_LITRES', icon: Icons.water_drop),
+    (value: 'kg', key: 'UNIT_KILOGRAMS', icon: Icons.scale),
+    (value: 'm', key: 'UNIT_METRES', icon: Icons.straighten),
+    (value: 'kpl', key: 'UNIT_SETS', icon: Icons.widgets),
   ];
 
   @override
@@ -162,7 +163,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       final message = result['message'] ?? 'Zapisano';
 
       // Loguj do lokalnej historii
-      final label = _movementType == 'in' ? 'Przyjęcie' : 'Wydanie';
+      final label = _movementType == 'in' ? tr('LOG_STOCK_IN') : tr('LOG_STOCK_OUT');
       await LocalHistoryService().add(
         actionType: _movementType == 'in' ? 'stock_in' : 'stock_out',
         title: '$label: $productName',
@@ -185,7 +186,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         note: note,
       );
 
-      final label = _movementType == 'in' ? 'Przyjęcie' : 'Wydanie';
+      final label = _movementType == 'in' ? tr('LOG_STOCK_IN') : tr('LOG_STOCK_OUT');
       await LocalHistoryService().add(
         actionType: _movementType == 'in' ? 'stock_in' : 'stock_out',
         title: '$label (offline): $productName',
@@ -212,7 +213,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         note: note,
       );
 
-      final label2 = _movementType == 'in' ? 'Przyjęcie' : 'Wydanie';
+      final label2 = _movementType == 'in' ? tr('LOG_STOCK_IN') : tr('LOG_STOCK_OUT');
       await LocalHistoryService().add(
         actionType: _movementType == 'in' ? 'stock_in' : 'stock_out',
         title: '$label2 (offline): $productName',
@@ -239,10 +240,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF2C2F3A),
         icon: const Icon(Icons.cloud_off, color: Colors.orange, size: 48),
-        title: const Text('Zapisano w kolejce', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Brak po\u0142\u0105czenia z serwerem. Ruch zostanie wys\u0142any automatycznie gdy WiFi wr\u00f3ci.',
-          style: TextStyle(color: Colors.white70),
+        title: Text(tr('DIALOG_QUEUED_TITLE'), style: const TextStyle(color: Colors.white)),
+        content: Text(
+          tr('DIALOG_QUEUED_CONTENT'),
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           FilledButton(
@@ -251,7 +252,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               Navigator.pop(ctx);
               Navigator.pop(context);
             },
-            child: const Text('Skanuj następny'),
+            child: Text(tr('BUTTON_SCAN_NEXT')),
           ),
         ],
       ),
@@ -269,7 +270,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           color: _accent,
           size: 48,
         ),
-        title: const Text('Sukces!', style: TextStyle(color: Colors.white)),
+        title: Text(tr('DIALOG_SUCCESS_TITLE'), style: const TextStyle(color: Colors.white)),
         content: Text(message, style: const TextStyle(color: Colors.white70)),
         actions: [
           FilledButton(
@@ -278,7 +279,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               Navigator.pop(ctx);
               Navigator.pop(context);
             },
-            child: const Text('Skanuj następny'),
+            child: Text(tr('BUTTON_SCAN_NEXT')),
           ),
         ],
       ),
@@ -292,7 +293,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         backgroundColor: Colors.red.shade700,
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
-          label: 'Ponów',
+          label: tr('BUTTON_RETRY'),
           textColor: Colors.white,
           onPressed: _saveMovement,
         ),
@@ -315,7 +316,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     return Scaffold(
       backgroundColor: _darkBg,
       appBar: AppBar(
-        title: Text(isOut ? 'Wydanie towaru' : 'Przyjęcie towaru'),
+        title: Text(isOut ? tr('FORM_TITLE_OUT') : tr('FORM_TITLE_IN')),
         centerTitle: true,
         backgroundColor: _darkBg,
         foregroundColor: Colors.white,
@@ -369,9 +370,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     if (_stockByUnit.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Divider(color: Colors.white.withAlpha(30)),
-                      const Text(
-                        'Stan magazynowy:',
-                        style: TextStyle(fontSize: 12, color: Colors.white54),
+                      Text(
+                        tr('FORM_STOCK_LEVEL'),
+                        style: const TextStyle(fontSize: 12, color: Colors.white54),
                       ),
                       const SizedBox(height: 6),
                       ..._stockByUnit.map((s) {
@@ -410,9 +411,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     ] else if (!_isChecking) ...[
                       const SizedBox(height: 12),
                       Divider(color: Colors.white.withAlpha(30)),
-                      const Text(
-                        'Nowy produkt — brak w magazynie',
-                        style: TextStyle(fontSize: 12, color: Colors.white38),
+                      Text(
+                        tr('FORM_NEW_PRODUCT'),
+                        style: const TextStyle(fontSize: 12, color: Colors.white38),
                       ),
                     ],
                   ],
@@ -423,16 +424,16 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
               // Przełącznik Przyjęcie / Wydanie
               SegmentedButton<String>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: 'in',
-                    label: Text('Przyjęcie'),
-                    icon: Icon(Icons.add_circle_outline),
+                    label: Text(tr('MOVEMENT_IN')),
+                    icon: const Icon(Icons.add_circle_outline),
                   ),
                   ButtonSegment(
                     value: 'out',
-                    label: Text('Wydanie'),
-                    icon: Icon(Icons.remove_circle_outline),
+                    label: Text(tr('MOVEMENT_OUT')),
+                    icon: const Icon(Icons.remove_circle_outline),
                   ),
                 ],
                 selected: {_movementType},
@@ -468,9 +469,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   textCapitalization: TextCapitalization.sentences,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: 'Nazwa produktu',
+                    labelText: tr('LABEL_PRODUCT_NAME'),
                     labelStyle: const TextStyle(color: Colors.white54),
-                    hintText: 'Wpisz nazwę produktu...',
+                    hintText: tr('HINT_PRODUCT_NAME'),
                     hintStyle: const TextStyle(color: Colors.white24),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     prefixIcon: const Icon(Icons.inventory_2, color: _accent),
@@ -479,10 +480,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Wpisz nazwę produktu';
+                      return tr('VALIDATION_PRODUCT_NAME_REQUIRED');
                     }
                     if (value.trim().length < 2) {
-                      return 'Nazwa musi mieć co najmniej 2 znaki';
+                      return tr('VALIDATION_PRODUCT_NAME_MIN_LENGTH');
                     }
                     return null;
                   },
@@ -501,7 +502,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
-                          labelText: 'Ilość',
+                          labelText: tr('LABEL_QUANTITY'),
                           labelStyle: const TextStyle(color: Colors.white54),
                           hintText: '1',
                           hintStyle: const TextStyle(color: Colors.white24),
@@ -510,25 +511,25 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           filled: true,
                           fillColor: _inputBg,
                           helperText: isOut && stockForUnit > 0
-                              ? 'Dostępne: ${_formatQty(stockForUnit)}'
+                              ? '${tr('LABEL_AVAILABLE')} ${_formatQty(stockForUnit)}'
                               : null,
                           helperStyle: TextStyle(color: Colors.green.shade400),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Podaj ilość';
+                            return tr('VALIDATION_QUANTITY_REQUIRED');
                           }
                           final qty = double.tryParse(value.trim());
                           if (qty == null || qty <= 0) {
-                            return 'Ilość > 0';
+                            return tr('VALIDATION_QUANTITY_POSITIVE');
                           }
                           if (isOut && !_isCompoundUnit && qty > stockForUnit) {
-                            return 'Max: ${_formatQty(stockForUnit)}';
+                            return '${tr('VALIDATION_MAX')} ${_formatQty(stockForUnit)}';
                           }
                           if (isOut && _isCompoundUnit) {
                             final pcs = double.tryParse(_piecesPerPackageController.text.trim() ) ?? 0;
                             if (pcs > 0 && qty * pcs > stockForUnit) {
-                              return 'Max: ${_formatQty(stockForUnit)} $_targetUnit';
+                            return '${tr('VALIDATION_MAX')} ${_formatQty(stockForUnit)} $_targetUnit';
                             }
                           }
                           return null;
@@ -544,7 +545,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                         dropdownColor: _cardBg,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
-                          labelText: 'Jednostka',
+                          labelText: tr('LABEL_UNIT'),
                           labelStyle: const TextStyle(color: Colors.white54),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                           filled: true,
@@ -552,7 +553,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                         ),
                         items: _units.map((u) => DropdownMenuItem(
                           value: u.value,
-                          child: Text(u.label),
+                          child: Text(tr(u.key)),
                         )).toList(),
                         onChanged: (value) {
                           if (value != null) setState(() => _selectedUnit = value);
@@ -577,8 +578,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             labelText: _selectedUnit == 'opak'
-                                ? 'Ile w opakowaniu?'
-                                : 'Ile w komplecie?',
+                                ? tr('LABEL_PER_PACKAGE')
+                                : tr('LABEL_PER_SET'),
                             labelStyle: const TextStyle(color: Colors.white54),
                             hintText: 'np. 10',
                             hintStyle: const TextStyle(color: Colors.white24),
@@ -590,7 +591,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           onChanged: (_) => setState(() {}),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Podaj ilość w ${_selectedUnit == 'opak' ? 'opak.' : 'kpl.'}';
+                              return tr(_selectedUnit == 'opak' ? 'VALIDATION_PER_PACKAGE_REQUIRED' : 'VALIDATION_PER_SET_REQUIRED');
                             }
                             final pcs = double.tryParse(value.trim());
                             if (pcs == null || pcs <= 0) {
@@ -609,7 +610,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           dropdownColor: _cardBg,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            labelText: 'Jedn.',
+                            labelText: tr('LABEL_UNIT_SHORT'),
                             labelStyle: const TextStyle(color: Colors.white54),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                             filled: true,
@@ -617,7 +618,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           ),
                           items: _baseUnits.map((u) => DropdownMenuItem(
                             value: u.value,
-                            child: Text(u.label),
+                            child: Text(tr(u.key)),
                           )).toList(),
                           onChanged: (value) {
                             if (value != null) setState(() => _targetUnit = value);
@@ -641,7 +642,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           const Icon(Icons.info_outline, size: 18, color: _accent),
                           const SizedBox(width: 8),
                           Text(
-                            'Razem: ${_formatQty((double.tryParse(_quantityController.text) ?? 0) * (double.tryParse(_piecesPerPackageController.text) ?? 0))} $_targetUnit',
+                            '${tr('LABEL_TOTAL')} ${_formatQty((double.tryParse(_quantityController.text) ?? 0) * (double.tryParse(_piecesPerPackageController.text) ?? 0))} $_targetUnit',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: _accent,
@@ -661,9 +662,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   textCapitalization: TextCapitalization.sentences,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: isOut ? 'Notatka (np. kto pobiera)' : 'Notatka (opcjonalnie)',
+                    labelText: isOut ? tr('LABEL_NOTE_OUT') : tr('LABEL_NOTE_IN'),
                     labelStyle: const TextStyle(color: Colors.white54),
-                    hintText: isOut ? 'np. Mechanik Kowalski' : 'np. Dostawa z hurtowni',
+                    hintText: isOut ? tr('HINT_NOTE_OUT') : tr('HINT_NOTE_IN'),
                     hintStyle: const TextStyle(color: Colors.white24),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     prefixIcon: const Icon(Icons.note, color: _accent),
@@ -690,8 +691,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                       : Icon(isOut ? Icons.remove_circle : Icons.add_circle, color: Colors.white),
                   label: Text(
                     _isSaving
-                        ? 'Zapisywanie...'
-                        : isOut ? 'Wydaj towar' : 'Przyjmij towar',
+                        ? tr('BUTTON_SAVING')
+                        : isOut ? tr('BUTTON_ISSUE_GOODS') : tr('BUTTON_RECEIVE_GOODS'),
                     style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                   style: FilledButton.styleFrom(
@@ -705,9 +706,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 if (_movements.isNotEmpty) ...[
                   const SizedBox(height: 28),
                   Divider(color: Colors.white.withAlpha(30)),
-                  const Text(
-                    'Ostatnie ruchy:',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white70),
+                  Text(
+                    tr('FORM_RECENT_MOVEMENTS'),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white70),
                   ),
                   const SizedBox(height: 8),
                   ..._movements.take(10).map((m) {

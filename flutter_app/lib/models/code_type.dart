@@ -1,3 +1,5 @@
+import '../l10n/translations.dart';
+
 /// Typ zeskanowanego kodu
 enum CodeType {
   barcode,
@@ -9,8 +11,8 @@ enum CodeType {
   };
 
   String get label => switch (this) {
-    CodeType.barcode => 'Kod kreskowy',
-    CodeType.productCode => 'Kod produktu',
+    CodeType.barcode => tr('CODE_TYPE_BARCODE'),
+    CodeType.productCode => tr('CODE_TYPE_PRODUCT_CODE'),
   };
 
   static CodeType fromApi(String? value) => switch (value) {

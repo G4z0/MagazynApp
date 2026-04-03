@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import '../l10n/translations.dart';
 import 'product_form_screen.dart';
 
 /// Ekran OCR — podgląd kamery w aplikacji + przycisk migawki.
@@ -32,7 +33,7 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
-        setState(() => _initError = 'Brak dostępnych kamer');
+        setState(() => _initError = tr('ERROR_NO_CAMERAS'));
         return;
       }
 
@@ -50,7 +51,7 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
       await _camera!.initialize();
       if (mounted) setState(() => _isInitialized = true);
     } catch (e) {
-      if (mounted) setState(() => _initError = 'Błąd kamery: $e');
+      if (mounted) setState(() => _initError = tr('ERROR_CAMERA', args: {'error': '$e'}));
     }
   }
 
@@ -139,8 +140,8 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
         if (result.text.isEmpty) {
           setState(() => _isProcessing = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Nie rozpoznano żadnego tekstu'),
+            SnackBar(
+              content: Text(tr('OCR_NO_TEXT')),
               backgroundColor: Colors.orange,
             ),
           );
@@ -160,8 +161,8 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
 
         if (lines.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Nie znaleziono kodów w tekście'),
+            SnackBar(
+              content: Text(tr('OCR_NO_CODES')),
               backgroundColor: Colors.orange,
             ),
           );
@@ -177,7 +178,7 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
         setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Błąd OCR: $e'),
+            content: Text(tr('ERROR_OCR', args: {'error': '$e'})),
             backgroundColor: Colors.red,
           ),
         );
@@ -222,7 +223,7 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
-          title: const Text('Rozpoznaj tekst'),
+          title: Text(tr('OCR_TITLE')),
           centerTitle: true,
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
@@ -254,15 +255,15 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
     }
 
     if (!_isInitialized || _camera == null) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: Colors.white),
-            SizedBox(height: 16),
+            const CircularProgressIndicator(color: Colors.white),
+            const SizedBox(height: 16),
             Text(
-              'Uruchamianie kamery...',
-              style: TextStyle(color: Colors.white70),
+              tr('CAMERA_STARTING'),
+              style: const TextStyle(color: Colors.white70),
             ),
           ],
         ),
@@ -316,9 +317,9 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: const Text(
-                  'Skieruj kamerę na etykietę z kodem produktu\ni naciśnij przycisk migawki',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
+                child: Text(
+                  tr('OCR_INSTRUCTION'),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -397,7 +398,7 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
               right: 0,
               child: Center(
                 child: Text(
-                  _isProcessing ? 'Rozpoznaję tekst...' : 'Zrób zdjęcie',
+                  _isProcessing ? tr('OCR_PROCESSING') : tr('OCR_TAKE_PHOTO'),
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
               ),
@@ -496,17 +497,17 @@ class _OcrResultsSheetState extends State<_OcrResultsSheet> {
                 Icon(Icons.text_fields, color: Colors.blue.shade700),
                 const SizedBox(width: 8),
                 Text(
-                  'Rozpoznany tekst (${_controllers.length})',
+                  tr('OCR_RESULTS_TITLE', args: {'count': '${_controllers.length}'}),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
-              'Popraw tekst jeśli trzeba, potem wybierz kod:',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+              tr('OCR_EDIT_INSTRUCTION'),
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
             ),
           ),
           const Divider(height: 16),
@@ -556,7 +557,7 @@ class _OcrResultsSheetState extends State<_OcrResultsSheet> {
                       IconButton(
                         icon: Icon(Icons.check_circle,
                             color: Colors.green.shade700, size: 28),
-                        tooltip: 'Użyj tego kodu',
+                        tooltip: tr('OCR_USE_CODE'),
                         onPressed: () {
                           final code = _controllers[index].text.trim();
                           if (code.isNotEmpty) {

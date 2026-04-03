@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../l10n/translations.dart';
+import '../services/api_service.dart';
 import '../services/offline_queue_service.dart';
 import 'scanner_screen.dart';
 import 'plate_scanner_screen.dart';
@@ -15,12 +17,30 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  List<Map<String, dynamic>> _lowStockItems = [];
+  bool _lowStockLoading = true;
 
   static const Color accent = Color(0xFF3498DB);
   static const Color cardBg = Color(0xFF2C2F3A);
   static const Color darkBg = Color(0xFF1C1E26);
   static const Color secondaryText = Color(0xFFA0A5B1);
   static const Color sidebarBg = Color(0xFF23262E);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLowStock();
+  }
+
+  Future<void> _loadLowStock() async {
+    final items = await ApiService.getLowStockAlerts();
+    if (mounted) {
+      setState(() {
+        _lowStockItems = items;
+        _lowStockLoading = false;
+      });
+    }
+  }
 
   void _openScanner() {
     Navigator.push(
@@ -73,19 +93,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: const Icon(Icons.warehouse, color: Colors.white, size: 24),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Magazyn',
-                          style: TextStyle(
+                          tr('HOME_TITLE'),
+                          style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
-                        Text(
+                        const Text(
                           'LogisticsERP',
                           style: TextStyle(fontSize: 13, color: secondaryText),
                         ),
@@ -126,41 +146,136 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisCount: 2,
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 1.05,
+              childAspectRatio: 0.9,
               children: [
                 _DashboardTile(
                   icon: Icons.qr_code_scanner,
-                  label: 'Skanuj kod',
+                  label: tr('TILE_SCAN_CODE'),
                   onTap: _openScanner,
                 ),
                 _DashboardTile(
                   icon: Icons.inventory_2,
-                  label: 'Stany\nmagazynowe',
+                  label: tr('TILE_STOCK_LEVELS'),
                   onTap: () => setState(() => _currentIndex = 1),
                 ),
                 _DashboardTile(
-                  icon: Icons.document_scanner,
-                  label: 'Skanuj\ntablicę',
-                  onTap: _openPlateScanner,
-                ),
-                _DashboardTile(
                   icon: Icons.build,
-                  label: 'Wydanie\nna naprawę',
+                  label: tr('TILE_ISSUE_FOR_REPAIR'),
                   onTap: _openScanner,
                 ),
                 _DashboardTile(
-                  icon: Icons.history,
-                  label: 'Historia\nprzedmiotów',
-                  onTap: () => setState(() => _currentIndex = 3),
-                ),
-                _DashboardTile(
                   icon: Icons.rv_hookup,
-                  label: 'Dodaj\nnaprawę',
+                  label: tr('TILE_ADD_REPAIR'),
                   onTap: _openPlateScanner,
                 ),
               ],
             ),
           ),
+
+          // Low stock alerts
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber, color: Colors.orange.shade400, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    tr('LOW_STOCK_TITLE'),
+                    style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  const Spacer(),
+                  if (_lowStockLoading)
+                    const SizedBox(
+                      width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24),
+                    )
+                  else
+                    Text(
+                      '${_lowStockItems.length}',
+                      style: TextStyle(color: Colors.orange.shade400, fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (!_lowStockLoading && _lowStockItems.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Card(
+                  color: const Color(0xFF2C2F3A),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Center(
+                      child: Text(
+                        tr('LOW_STOCK_EMPTY'),
+                        style: const TextStyle(color: Colors.white38, fontSize: 13),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final item = _lowStockItems[index];
+                    final name = item['product_name'] ?? tr('PRODUCT_NO_NAME');
+                    final stock = double.tryParse(item['current_stock'].toString()) ?? 0;
+                    final unit = item['unit'] ?? 'szt';
+                    final fmtStock = stock == stock.roundToDouble()
+                        ? stock.toInt().toString()
+                        : stock.toStringAsFixed(2);
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.red.shade900.withAlpha(80)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.red.withAlpha(25),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(Icons.warning_amber, color: Colors.red.shade300, size: 18),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '$fmtStock $unit',
+                            style: TextStyle(
+                              color: Colors.red.shade300,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  childCount: _lowStockItems.length,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -180,13 +295,13 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _NavItem(
                 icon: Icons.home,
-                label: 'Główna',
+                label: tr('NAV_HOME'),
                 isActive: _currentIndex == 0,
                 onTap: () => setState(() => _currentIndex = 0),
               ),
               _NavItem(
                 icon: Icons.inventory_2,
-                label: 'Stany',
+                label: tr('NAV_STOCK'),
                 isActive: _currentIndex == 1,
                 onTap: () => setState(() => _currentIndex = 1),
               ),
@@ -213,13 +328,13 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               _NavItem(
                 icon: Icons.history,
-                label: 'Historia',
+                label: tr('NAV_HISTORY'),
                 isActive: _currentIndex == 3,
                 onTap: () => setState(() => _currentIndex = 3),
               ),
               _NavItem(
                 icon: Icons.more_horiz,
-                label: 'Więcej',
+                label: tr('NAV_MORE'),
                 isActive: _currentIndex == 4,
                 onTap: () => setState(() => _currentIndex = 4),
               ),

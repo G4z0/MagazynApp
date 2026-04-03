@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../l10n/translations.dart';
 import '../services/offline_queue_service.dart';
 import 'ocr_capture_screen.dart';
 import 'product_form_screen.dart';
@@ -113,7 +114,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Skaner kodów'),
+        title: Text(tr('SCANNER_TITLE')),
         centerTitle: true,
         actions: [
           // Wskaźnik kolejki offline
@@ -129,7 +130,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                     child: const Icon(Icons.cloud_upload),
                   ),
                   onPressed: () => _showQueueSheet(),
-                  tooltip: '$count w kolejce',
+                  tooltip: tr('SCANNER_QUEUE_TOOLTIP', args: {'count': '$count'}),
                 ),
               );
             },
@@ -138,13 +139,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
           IconButton(
             icon: const Icon(Icons.flash_on),
             onPressed: () => _controller?.toggleTorch(),
-            tooltip: 'Lampa',
+            tooltip: tr('SCANNER_TORCH_TOOLTIP'),
           ),
           // Przycisk do przełączania kamery (przód/tył)
           IconButton(
             icon: const Icon(Icons.cameraswitch),
             onPressed: () => _controller?.switchCamera(),
-            tooltip: 'Przełącz kamerę',
+            tooltip: tr('SCANNER_SWITCH_CAMERA'),
           ),
         ],
       ),
@@ -218,8 +219,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('Wykryto kod',
-                                        style: TextStyle(
+                                    Text(tr('SCANNER_CODE_DETECTED'),
+                                        style: const TextStyle(
                                             fontSize: 13, color: Colors.grey)),
                                     const SizedBox(height: 4),
                                     Text(
@@ -258,7 +259,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                                 child: OutlinedButton.icon(
                                   onPressed: _rejectCode,
                                   icon: const Icon(Icons.close),
-                                  label: const Text('Odrzuć'),
+                                  label: Text(tr('BUTTON_REJECT')),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.red,
                                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -271,7 +272,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                                 child: FilledButton.icon(
                                   onPressed: _confirmCode,
                                   icon: const Icon(Icons.check),
-                                  label: const Text('Zatwierdź',
+                                  label: Text(tr('BUTTON_CONFIRM'),
                                       style: TextStyle(fontSize: 16)),
                                   style: FilledButton.styleFrom(
                                     backgroundColor: Colors.green.shade700,
@@ -303,9 +304,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
                           color: Colors.black54,
                           borderRadius: BorderRadius.circular(24),
                         ),
-                        child: const Text(
-                          'Skieruj kamerę na kod',
-                          style: TextStyle(color: Colors.white, fontSize: 14),
+                        child: Text(
+                          tr('SCANNER_INSTRUCTION'),
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -374,7 +375,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                         heroTag: 'manual',
                         onPressed: () => _showManualEntryDialog(),
                         icon: const Icon(Icons.keyboard, size: 20),
-                        label: const Text('Ręcznie'),
+                        label: Text(tr('BUTTON_MANUAL')),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -394,23 +395,23 @@ class _ScannerScreenState extends State<ScannerScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Wpisz kod'),
+        title: Text(tr('DIALOG_ENTER_CODE_TITLE')),
         content: TextField(
           controller: textController,
           autofocus: true,
           keyboardType: TextInputType.text,
           textCapitalization: TextCapitalization.characters,
-          decoration: const InputDecoration(
-            hintText: 'np. 5901234123457 lub 2VP340961-111',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.qr_code),
-            helperText: 'Kod kreskowy lub kod produktu',
+          decoration: InputDecoration(
+            hintText: tr('DIALOG_ENTER_CODE_HINT'),
+            border: const OutlineInputBorder(),
+            prefixIcon: const Icon(Icons.qr_code),
+            helperText: tr('DIALOG_ENTER_CODE_HELPER'),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Anuluj'),
+            child: Text(tr('BUTTON_CANCEL')),
           ),
           FilledButton(
             onPressed: () {
@@ -425,7 +426,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 );
               }
             },
-            child: const Text('Dalej'),
+            child: Text(tr('BUTTON_NEXT')),
           ),
         ],
       ),
@@ -516,7 +517,7 @@ class _QueueListSheetState extends State<_QueueListSheet> {
               const Icon(Icons.cloud_upload, color: Colors.orange),
               const SizedBox(width: 8),
               Text(
-                'Kolejka (${_items.length})',
+                tr('QUEUE_HEADER', args: {'count': '${_items.length}'}),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const Spacer(),
@@ -529,7 +530,7 @@ class _QueueListSheetState extends State<_QueueListSheet> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.sync, size: 18),
-                  label: Text(_isSyncing ? 'Wysyłanie...' : 'Wyślij'),
+                  label: Text(_isSyncing ? tr('BUTTON_SENDING') : tr('BUTTON_SEND')),
                 ),
             ],
           ),
@@ -538,9 +539,9 @@ class _QueueListSheetState extends State<_QueueListSheet> {
         // Lista
         Expanded(
           child: _items.isEmpty
-              ? const Center(
-                  child: Text('Kolejka jest pusta',
-                      style: TextStyle(color: Colors.grey)),
+              ? Center(
+                  child: Text(tr('QUEUE_EMPTY'),
+                      style: const TextStyle(color: Colors.grey)),
                 )
               : ListView.separated(
                   controller: widget.scrollController,

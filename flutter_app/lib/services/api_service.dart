@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../l10n/translations.dart';
 import '../models/code_type.dart';
 
 /// Serwis do komunikacji z API na serwerze LogisticsERP
@@ -52,16 +53,16 @@ class ApiService {
         if (data['success'] == true) {
           return data;
         }
-        throw ApiException(data['error'] ?? 'Nieznany błąd');
+        throw ApiException(data['error'] ?? tr('ERROR_UNKNOWN'));
       }
 
       throw ApiException(
-        data['error'] ?? 'Błąd serwera (${response.statusCode})',
+        data['error'] ?? tr('ERROR_SERVER_STATUS', args: {'code': '${response.statusCode}'}),
       );
     } on http.ClientException {
-      throw NetworkException('Brak połączenia z serwerem.');
+      throw NetworkException(tr('ERROR_NO_CONNECTION'));
     } on FormatException {
-      throw ApiException('Nieprawidłowa odpowiedź z serwera.');
+      throw ApiException(tr('ERROR_INVALID_RESPONSE'));
     }
   }
 
@@ -121,6 +122,25 @@ class ApiService {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         if (data['success'] == true) {
           return List<Map<String, dynamic>>.from(data['parts'] ?? []);
+        }
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Pobierz produkty z zerowym lub niskim stanem (alerty).
+  static Future<List<Map<String, dynamic>>> getLowStockAlerts() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_endpoint?low_stock=1'))
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (data['success'] == true) {
+          return List<Map<String, dynamic>>.from(data['items'] ?? []);
         }
       }
       return [];
