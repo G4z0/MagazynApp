@@ -6,7 +6,7 @@ import 'package:path/path.dart' as p;
 import '../models/code_type.dart';
 import 'api_service.dart';
 
-/// Serwis kolejki offline — zapisuje produkty lokalnie gdy brak sieci,
+/// Serwis kolejki offline — zapisuje ruchy magazynowe lokalnie gdy brak sieci,
 /// automatycznie wysyła gdy połączenie wróci.
 class OfflineQueueService {
   static final OfflineQueueService _instance = OfflineQueueService._();
@@ -29,7 +29,7 @@ class OfflineQueueService {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       p.join(dbPath, 'offline_queue.db'),
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE queue (
@@ -37,8 +37,10 @@ class OfflineQueueService {
             barcode TEXT NOT NULL,
             code_type TEXT NOT NULL DEFAULT 'barcode',
             product_name TEXT NOT NULL,
+            movement_type TEXT NOT NULL DEFAULT 'in',
             quantity REAL NOT NULL DEFAULT 1,
             unit TEXT NOT NULL DEFAULT 'szt',
+            note TEXT,
             created_at TEXT NOT NULL
           )
         ''');
@@ -47,6 +49,14 @@ class OfflineQueueService {
         if (oldVersion < 2) {
           await db.execute(
             "ALTER TABLE queue ADD COLUMN code_type TEXT NOT NULL DEFAULT 'barcode'",
+          );
+        }
+        if (oldVersion < 3) {
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN movement_type TEXT NOT NULL DEFAULT 'in'",
+          );
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN note TEXT",
           );
         }
       },
@@ -70,27 +80,31 @@ class OfflineQueueService {
     _connectivitySub?.cancel();
   }
 
-  /// Dodaj produkt do kolejki offline
+  /// Dodaj ruch magazynowy do kolejki offline
   Future<void> enqueue({
     required String barcode,
     required String productName,
     required double quantity,
     required String unit,
     required CodeType codeType,
+    required String movementType,
+    String? note,
   }) async {
     final db = await database;
     await db.insert('queue', {
       'barcode': barcode,
       'code_type': codeType.apiValue,
       'product_name': productName,
+      'movement_type': movementType,
       'quantity': quantity,
       'unit': unit,
+      'note': note,
       'created_at': DateTime.now().toIso8601String(),
     });
     await _refreshCount();
   }
 
-  /// Wyślij zakolejkowane produkty na serwer
+  /// Wyślij zakolejkowane ruchy na serwer
   Future<void> syncQueue() async {
     if (_isSyncing) return;
     _isSyncing = true;
@@ -107,6 +121,8 @@ class OfflineQueueService {
             quantity: (item['quantity'] as num).toDouble(),
             unit: item['unit'] as String,
             codeType: CodeType.fromApi(item['code_type'] as String?),
+            movementType: item['movement_type'] as String? ?? 'in',
+            note: item['note'] as String?,
           );
           // Wysłano — usuń z kolejki
           await db.delete('queue', where: 'id = ?', whereArgs: [item['id']]);

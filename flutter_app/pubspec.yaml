@@ -24,8 +24,15 @@ dependencies:
   # Monitoring połączenia sieciowego
   connectivity_plus: ^6.0.3
 
+  # OCR — rozpoznawanie tekstu z kamery (kody produktów)
+  google_mlkit_text_recognition: ^0.14.0
+  camera: ^0.11.1
+
   # Ikony Material Design
   cupertino_icons: ^1.0.6
+
+  # Przechowywanie sesji użytkownika
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:

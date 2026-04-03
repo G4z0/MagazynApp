@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../models/code_type.dart';
 import '../services/offline_queue_service.dart';
+import 'ocr_capture_screen.dart';
 import 'product_form_screen.dart';
 
 /// Główny ekran ze skanerem kodów kreskowych.
@@ -16,50 +16,96 @@ class ScannerScreen extends StatefulWidget {
 }
 
 class _ScannerScreenState extends State<ScannerScreen> {
-  late MobileScannerController _controller;
+  MobileScannerController? _controller;
 
-  bool _isProcessing = false;
+  // Wykryty kod — czeka na potwierdzenie użytkownika
+  String? _detectedCode;
+  String? _detectedFormat;
+  bool _isNavigating = false;
 
-  // Mnożnik rozmiaru okienka (0.4 - 1.0)
+  // Mnożnik rozmiaru okienka wizualnego (0.4 - 1.0)
   double _scanSizeFactor = 0.85;
 
   @override
   void initState() {
     super.initState();
+    _startCamera();
+  }
+
+  void _startCamera() {
     _controller = MobileScannerController(
-      detectionSpeed: DetectionSpeed.noDuplicates,
+      detectionSpeed: DetectionSpeed.normal,
       facing: CameraFacing.back,
-      // Brak filtra formatów — rozpoznaje WSZYSTKIE typy kodów
     );
+    setState(() {});
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   void _onBarcodeDetected(BarcodeCapture capture) {
-    // Zabezpieczenie przed wielokrotnym wykryciem
-    if (_isProcessing) return;
+    if (_isNavigating) return;
 
     final barcode = capture.barcodes.firstOrNull;
     if (barcode == null || barcode.rawValue == null) return;
 
-    setState(() => _isProcessing = true);
+    final value = barcode.rawValue!;
+    final format = barcode.format.name;
 
-    // Wibracja/dźwięk potwierdzenia
-    final scannedValue = barcode.rawValue!;
+    // Pokaż wykryty kod — czekaj na potwierdzenie
+    if (_detectedCode != value) {
+      setState(() {
+        _detectedCode = value;
+        _detectedFormat = format;
+      });
+    }
+  }
 
-    // Przejdź do formularza
+  void _confirmCode() {
+    if (_detectedCode == null || _isNavigating) return;
+    setState(() => _isNavigating = true);
+
+    final code = _detectedCode!;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ProductFormScreen(barcode: scannedValue),
+        builder: (context) => ProductFormScreen(barcode: code),
       ),
     ).then((_) {
-      // Po powrocie z formularza, pozwól skanować ponownie
-      setState(() => _isProcessing = false);
+      setState(() {
+        _detectedCode = null;
+        _detectedFormat = null;
+        _isNavigating = false;
+      });
+    });
+  }
+
+  void _rejectCode() {
+    setState(() {
+      _detectedCode = null;
+      _detectedFormat = null;
+    });
+  }
+
+  /// Otwórz ekran OCR (rozpoznawanie tekstu)
+  void _openOcrScreen() {
+    // Usuń kamerę całkowicie
+    _controller?.dispose();
+    _controller = null;
+    setState(() {});
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const OcrCaptureScreen()),
+    ).then((_) {
+      if (!mounted) return;
+      // OCR zwalnia kamerę przed pop, ale dajmy chwilę na zwolnienie zasobu HW
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) _startCamera();
+      });
     });
   }
 
@@ -91,13 +137,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
           // Przycisk do przełączania lampy błyskowej
           IconButton(
             icon: const Icon(Icons.flash_on),
-            onPressed: () => _controller.toggleTorch(),
+            onPressed: () => _controller?.toggleTorch(),
             tooltip: 'Lampa',
           ),
           // Przycisk do przełączania kamery (przód/tył)
           IconButton(
             icon: const Icon(Icons.cameraswitch),
-            onPressed: () => _controller.switchCamera(),
+            onPressed: () => _controller?.switchCamera(),
             tooltip: 'Przełącz kamerę',
           ),
         ],
@@ -114,14 +160,16 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
           return Stack(
             children: [
-              // Podgląd kamery z ograniczonym polem skanowania
-              MobileScanner(
-                controller: _controller,
-                onDetect: _onBarcodeDetected,
-                scanWindow: scanWindow,
-              ),
+              // Podgląd kamery z ograniczonym polem detekcji
+              if (_controller != null)
+                MobileScanner(
+                  key: ValueKey(_controller.hashCode),
+                  controller: _controller!,
+                  onDetect: _onBarcodeDetected,
+                  scanWindow: scanWindow,
+                ),
 
-              // Nakładka z ramką celownika
+              // Nakładka z ramką celownika (tylko wizualnie)
               CustomPaint(
                 size: Size(constraints.maxWidth, constraints.maxHeight),
                 painter: _ScanOverlayPainter(
@@ -135,71 +183,207 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   width: scanAreaWidth,
                   height: scanAreaHeight,
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white, width: 2),
+                    border: Border.all(
+                      color: _detectedCode != null ? Colors.greenAccent : Colors.white,
+                      width: _detectedCode != null ? 3 : 2,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
 
-              // Slider rozmiaru okienka + instrukcja
-              Positioned(
-                bottom: 80,
-                left: 16,
-                right: 16,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Text(
-                        _isProcessing
-                            ? 'Przetwarzanie...'
-                            : 'Skieruj kamerę na kod',
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
-                      ),
+              // Panel potwierdzenia wykrytego kodu
+              if (_detectedCode != null)
+                Positioned(
+                  bottom: 24,
+                  left: 16,
+                  right: 16,
+                  child: Card(
+                    color: Colors.white,
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black38,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Row(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.photo_size_select_small, color: Colors.white70, size: 18),
-                          Expanded(
-                            child: Slider(
-                              value: _scanSizeFactor,
-                              min: 0.4,
-                              max: 1.0,
-                              activeColor: Colors.white,
-                              inactiveColor: Colors.white30,
-                              onChanged: (v) => setState(() => _scanSizeFactor = v),
-                            ),
+                          Row(
+                            children: [
+                              Icon(Icons.qr_code_scanner,
+                                  color: Colors.green.shade700, size: 28),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Wykryto kod',
+                                        style: TextStyle(
+                                            fontSize: 13, color: Colors.grey)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _detectedCode!,
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'monospace',
+                                        letterSpacing: 1.2,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          const Icon(Icons.photo_size_select_large, color: Colors.white70, size: 18),
+                          if (_detectedFormat != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Chip(
+                                  label: Text(_detectedFormat!,
+                                      style: const TextStyle(fontSize: 11)),
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _rejectCode,
+                                  icon: const Icon(Icons.close),
+                                  label: const Text('Odrzuć'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 2,
+                                child: FilledButton.icon(
+                                  onPressed: _confirmCode,
+                                  icon: const Icon(Icons.check),
+                                  label: const Text('Zatwierdź',
+                                      style: TextStyle(fontSize: 16)),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: Colors.green.shade700,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+
+              // Slider rozmiaru okienka + instrukcja (ukryte gdy kod wykryty)
+              if (_detectedCode == null)
+                Positioned(
+                  bottom: 80,
+                  left: 16,
+                  right: 16,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: const Text(
+                          'Skieruj kamerę na kod',
+                          style: TextStyle(color: Colors.white, fontSize: 14),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black38,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.photo_size_select_small,
+                                color: Colors.white70, size: 18),
+                            Expanded(
+                              child: Slider(
+                                value: _scanSizeFactor,
+                                min: 0.4,
+                                max: 1.0,
+                                activeColor: Colors.white,
+                                inactiveColor: Colors.white30,
+                                onChanged: (v) =>
+                                    setState(() => _scanSizeFactor = v),
+                              ),
+                            ),
+                            const Icon(Icons.photo_size_select_large,
+                                color: Colors.white70, size: 18),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           );
         },
       ),
 
-      // Przycisk do ręcznego wpisania kodu
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showManualEntryDialog(),
-        icon: const Icon(Icons.keyboard),
-        label: const Text('Wpisz ręcznie'),
-      ),
+      // Przyciski dolne — ukryte gdy widoczna karta potwierdzenia
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: _detectedCode != null
+          ? null
+          : Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: FloatingActionButton.extended(
+                        heroTag: 'ocr',
+                        onPressed: _openOcrScreen,
+                        icon: const Icon(Icons.document_scanner, size: 20),
+                        label: const Text('OCR'),
+                        backgroundColor: Colors.blue.shade700,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: FloatingActionButton.extended(
+                        heroTag: 'manual',
+                        onPressed: () => _showManualEntryDialog(),
+                        icon: const Icon(Icons.keyboard, size: 20),
+                        label: const Text('Ręcznie'),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 

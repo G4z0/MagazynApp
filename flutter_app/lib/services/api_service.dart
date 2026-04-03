@@ -12,29 +12,37 @@ class ApiService {
 
   static String get _endpoint => '$_baseUrl$_apiPath';
 
-  /// Zapisz kod kreskowy z nazwą produktu do bazy danych.
+  /// Zarejestruj ruch magazynowy (przyjęcie lub wydanie).
   ///
-  /// Zwraca [Map] z odpowiedzią API w przypadku sukcesu,
-  /// lub rzuca wyjątek w przypadku błędu.
+  /// [movementType] — 'in' (przyjęcie) lub 'out' (wydanie)
+  /// [note] — opcjonalna notatka (np. "Mechanik Kowalski")
   static Future<Map<String, dynamic>> saveProduct({
     required String barcode,
     required String productName,
     required double quantity,
     required String unit,
     required CodeType codeType,
+    required String movementType,
+    String? note,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'barcode': barcode,
+        'product_name': productName,
+        'quantity': quantity,
+        'unit': unit,
+        'code_type': codeType.apiValue,
+        'movement_type': movementType,
+      };
+      if (note != null && note.trim().isNotEmpty) {
+        body['note'] = note.trim();
+      }
+
       final response = await http
           .post(
             Uri.parse(_endpoint),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'barcode': barcode,
-              'product_name': productName,
-              'quantity': quantity,
-              'unit': unit,
-              'code_type': codeType.apiValue,
-            }),
+            body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -57,7 +65,9 @@ class ApiService {
     }
   }
 
-  /// Sprawdź czy kod kreskowy już istnieje w bazie.
+  /// Pobierz stan magazynowy i historię ruchów dla kodu.
+  ///
+  /// Zwraca mapę z kluczami: data, stock (lista po jednostkach), movements (historia).
   static Future<Map<String, dynamic>?> checkBarcode(String barcode) async {
     try {
       final uri = Uri.parse('$_endpoint?barcode=$barcode');
@@ -67,12 +77,55 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         if (data['success'] == true && data['exists'] == true) {
-          return data['data'] as Map<String, dynamic>;
+          return data;
         }
       }
       return null;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Pobierz listę wszystkich produktów ze stanami magazynowymi.
+  /// Opcjonalnie filtruj po nazwie lub kodzie.
+  static Future<List<Map<String, dynamic>>> getStockList({String search = ''}) async {
+    try {
+      var url = '$_endpoint?list=1';
+      if (search.isNotEmpty) {
+        url += '&search=${Uri.encodeComponent(search)}';
+      }
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (data['success'] == true) {
+          return List<Map<String, dynamic>>.from(data['products'] ?? []);
+        }
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Pobierz dostępne części (stan > 0) do wyboru w formularzu naprawy.
+  static Future<List<Map<String, dynamic>>> getAvailableParts({String search = ''}) async {
+    try {
+      var url = '$_endpoint?parts=1';
+      if (search.isNotEmpty) {
+        url += '&search=${Uri.encodeComponent(search)}';
+      }
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (data['success'] == true) {
+          return List<Map<String, dynamic>>.from(data['parts'] ?? []);
+        }
+      }
+      return [];
+    } catch (_) {
+      return [];
     }
   }
 }

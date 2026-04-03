@@ -6,7 +6,7 @@
  */
 
 define('DB_HOST', '192.168.1.42');
-define('DB_NAME', 'logisticserp_dev');
+define('DB_NAME', 'logisticserp');
 define('DB_USER', 'logisticserp_dev');
 define('DB_PASS', '4H8k7OGi%4F$#j6NFBoimCFB0tbGQHYm');
 
