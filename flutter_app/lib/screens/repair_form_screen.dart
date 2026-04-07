@@ -39,6 +39,9 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
   final Map<int, TextEditingController> _serviceAmountControllers = {};
   final Map<int, TextEditingController> _serviceNoteControllers = {};
 
+  // Expanded service groups
+  final Set<String> _expandedGroups = {};
+
   // Custom services
   final List<_CustomService> _customServices = [];
 
@@ -433,7 +436,8 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                     controller: _noteController,
                     icon: Icons.note,
                     hint: tr('HINT_REPAIR_NOTE'),
-                    maxLines: 3,
+                    minLines: 1,
+                    maxLines: 5,
                   ),
                   const SizedBox(height: 24),
 
@@ -480,11 +484,13 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
     required IconData icon,
     required String hint,
     TextInputType keyboardType = TextInputType.text,
+    int? minLines,
     int maxLines = 1,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      minLines: minLines,
       maxLines: maxLines,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
@@ -509,6 +515,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
     final groupName = group['name'] as String? ?? '';
     final services = List<Map<String, dynamic>>.from(group['services'] ?? []);
     if (services.isEmpty) return const SizedBox.shrink();
+    final isExpanded = _expandedGroups.contains(groupName);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -516,62 +523,129 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
         color: _cardBg,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        iconColor: _secondaryText,
-        collapsedIconColor: _secondaryText,
-        title: Text(groupName, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
-        children: services.map((svc) {
-          final svcId = svc['id'] as int;
-          final svcName = svc['name'] as String? ?? '';
-          _selectedServices.putIfAbsent(svcId, () => false);
-          _serviceAmountControllers.putIfAbsent(svcId, () => TextEditingController());
-          _serviceNoteControllers.putIfAbsent(svcId, () => TextEditingController());
-          final isSelected = _selectedServices[svcId] == true;
-
-          return Column(
-            children: [
-              CheckboxListTile(
-                value: isSelected,
-                activeColor: _accent,
-                contentPadding: EdgeInsets.zero,
-                title: Text(svcName, style: const TextStyle(color: Colors.white, fontSize: 13)),
-                onChanged: (v) => setState(() => _selectedServices[svcId] = v ?? false),
-                dense: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: () => setState(() {
+              if (isExpanded) {
+                _expandedGroups.remove(groupName);
+              } else {
+                _expandedGroups.add(groupName);
+              }
+            }),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(groupName, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                  ),
+                  Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: _secondaryText,
+                  ),
+                ],
               ),
-              if (isSelected) ...[
-                Padding(
-                  padding: const EdgeInsets.only(left: 32, bottom: 8),
-                  child: Row(
+            ),
+          ),
+          if (isExpanded)
+            ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: services.length,
+              separatorBuilder: (_, __) => Divider(
+                height: 1,
+                thickness: 0.5,
+                color: _secondaryText.withAlpha(40),
+              ),
+              itemBuilder: (context, i) {
+                final svc = services[i];
+                final svcId = svc['id'] as int;
+                final svcName = svc['name'] as String? ?? '';
+                _selectedServices.putIfAbsent(svcId, () => false);
+                _serviceAmountControllers.putIfAbsent(svcId, () => TextEditingController());
+                _serviceNoteControllers.putIfAbsent(svcId, () => TextEditingController());
+                final isSelected = _selectedServices[svcId] == true;
+
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _selectedServices[svcId] = !isSelected),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        flex: 2,
-                        child: TextField(
-                          controller: _serviceAmountControllers[svcId],
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                          decoration: InputDecoration(
-                            hintText: tr('HINT_AMOUNT_PLN'),
-                            hintStyle: TextStyle(color: _secondaryText.withAlpha(120), fontSize: 12),
-                            filled: true,
-                            fillColor: _inputBg,
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
+                      SizedBox(
+                        height: 44,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 22,
+                              child: Center(
+                                child: Icon(
+                                  isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                                  color: isSelected ? _accent : _secondaryText,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  svcName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: false,
+                                  strutStyle: const StrutStyle(
+                                    fontSize: 14,
+                                    height: 1,
+                                    leading: 0,
+                                    forceStrutHeight: true,
+                                  ),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (isSelected)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 32, bottom: 8),
+                          child: TextField(
+                            controller: _serviceAmountControllers[svcId],
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                            decoration: InputDecoration(
+                              hintText: tr('HINT_AMOUNT_PLN'),
+                              hintStyle: TextStyle(color: _secondaryText.withAlpha(120), fontSize: 12),
+                              filled: true,
+                              fillColor: _inputBg,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide.none,
+                              ),
                             ),
                           ),
                         ),
-                      ),
                     ],
                   ),
-                ),
-              ],
-            ],
-          );
-        }).toList(),
+                );
+              },
+            ),
+        ],
       ),
     );
   }
