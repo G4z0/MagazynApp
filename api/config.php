@@ -6,11 +6,10 @@
  */
 
 define('DB_HOST', '192.168.1.42');
-define('DB_NAME', 'logisticserp');
+define('DB_NAME', 'logisticserp_dev');
 define('DB_USER', 'logisticserp_dev');
 define('DB_PASS', '4H8k7OGi%4F$#j6NFBoimCFB0tbGQHYm');
 
-// Połączenie z bazą danych
 function getDB() {
     try {
         $pdo = new PDO(
@@ -31,7 +30,6 @@ function getDB() {
     }
 }
 
-// Nagłówki CORS (pozwala na połączenia z aplikacji mobilnej)
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');

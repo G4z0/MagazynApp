@@ -47,3 +47,24 @@ GROUP BY sm.barcode, sm.code_type, sm.unit;
 -- INSERT INTO stock_movements (barcode, code_type, product_name, movement_type, quantity, unit, note, created_at)
 -- SELECT barcode, code_type, product_name, 'in', quantity * scan_count, unit, 'Migracja ze starej tabeli', scanned_at
 -- FROM scanned_products;
+
+-- =============================================================
+-- 3. Tabela dostaw (powiązanie z dokumentami WZ)
+-- =============================================================
+CREATE TABLE IF NOT EXISTS `stock_deliveries` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `document_number` VARCHAR(100) DEFAULT NULL,
+    `document_date` DATE DEFAULT NULL,
+    `supplier` VARCHAR(255) DEFAULT NULL,
+    `document_type` VARCHAR(50) DEFAULT NULL,
+    `items_count` INT NOT NULL DEFAULT 0,
+    `user_id` INT DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_supplier` (`supplier`),
+    INDEX `idx_document_date` (`document_date`),
+    INDEX `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dodanie kolumny delivery_id do stock_movements
+ALTER TABLE `stock_movements` ADD COLUMN `delivery_id` INT DEFAULT NULL AFTER `note`;
+ALTER TABLE `stock_movements` ADD INDEX `idx_delivery_id` (`delivery_id`);
