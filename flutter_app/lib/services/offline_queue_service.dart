@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 import '../models/code_type.dart';
 import 'api_service.dart';
+import 'auth_service.dart';
 
 /// Serwis kolejki offline — zapisuje ruchy magazynowe lokalnie gdy brak sieci,
 /// automatycznie wysyła gdy połączenie wróci.
@@ -29,7 +30,7 @@ class OfflineQueueService {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       p.join(dbPath, 'offline_queue.db'),
-      version: 3,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE queue (
@@ -41,6 +42,13 @@ class OfflineQueueService {
             quantity REAL NOT NULL DEFAULT 1,
             unit TEXT NOT NULL DEFAULT 'szt',
             note TEXT,
+            user_id INTEGER,
+            user_name TEXT,
+            issue_reason TEXT,
+            vehicle_plate TEXT,
+            issue_target TEXT,
+            driver_id INTEGER,
+            driver_name TEXT,
             created_at TEXT NOT NULL
           )
         ''');
@@ -57,6 +65,33 @@ class OfflineQueueService {
           );
           await db.execute(
             "ALTER TABLE queue ADD COLUMN note TEXT",
+          );
+        }
+        if (oldVersion < 4) {
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN user_id INTEGER",
+          );
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN user_name TEXT",
+          );
+        }
+        if (oldVersion < 5) {
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN issue_reason TEXT",
+          );
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN vehicle_plate TEXT",
+          );
+        }
+        if (oldVersion < 6) {
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN issue_target TEXT",
+          );
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN driver_id INTEGER",
+          );
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN driver_name TEXT",
           );
         }
       },
@@ -89,8 +124,14 @@ class OfflineQueueService {
     required CodeType codeType,
     required String movementType,
     String? note,
+    String? issueReason,
+    String? vehiclePlate,
+    String? issueTarget,
+    int? driverId,
+    String? driverName,
   }) async {
     final db = await database;
+    final auth = AuthService();
     await db.insert('queue', {
       'barcode': barcode,
       'code_type': codeType.apiValue,
@@ -99,6 +140,13 @@ class OfflineQueueService {
       'quantity': quantity,
       'unit': unit,
       'note': note,
+      'user_id': auth.userId,
+      'user_name': auth.displayName,
+      'issue_reason': issueReason,
+      'vehicle_plate': vehiclePlate,
+      'issue_target': issueTarget,
+      'driver_id': driverId,
+      'driver_name': driverName,
       'created_at': DateTime.now().toIso8601String(),
     });
     await _refreshCount();
@@ -123,6 +171,11 @@ class OfflineQueueService {
             codeType: CodeType.fromApi(item['code_type'] as String?),
             movementType: item['movement_type'] as String? ?? 'in',
             note: item['note'] as String?,
+            issueReason: item['issue_reason'] as String?,
+            vehiclePlate: item['vehicle_plate'] as String?,
+            issueTarget: item['issue_target'] as String?,
+            driverId: item['driver_id'] as int?,
+            driverName: item['driver_name'] as String?,
           );
           // Wysłano — usuń z kolejki
           await db.delete('queue', where: 'id = ?', whereArgs: [item['id']]);

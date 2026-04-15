@@ -3,8 +3,9 @@
  * API endpoint do obsługi ruchów magazynowych
  *
  * Endpointy:
- *   POST /barcode.php          - Zarejestruj ruch magazynowy (przyjęcie/wydanie)
- *   GET  /barcode.php?barcode=X - Pobierz stan magazynowy i historię ruchów
+ *   POST /barcode.php             - Zarejestruj ruch magazynowy (przyjęcie/wydanie)
+ *   GET  /barcode.php?barcode=X   - Pobierz stan magazynowy i historię ruchów
+ *   GET  /barcode.php?next_sas=1  - Pobierz następny wolny kod SAS-N
  */
 
 require_once __DIR__ . '/config.php';
@@ -35,7 +36,9 @@ switch ($method) {
  *     "quantity": 5,
  *     "unit": "szt",
  *     "code_type": "barcode",
- *     "note": "Mechanik Kowalski"     // opcjonalne
+ *     "note": "Mechanik Kowalski",    // opcjonalne
+ *     "user_id": 5,                    // opcjonalne — ID użytkownika
+ *     "user_name": "Jan Kowalski"      // opcjonalne — nazwa użytkownika
  *   }
  */
 function handlePost($db) {
@@ -58,6 +61,13 @@ function handlePost($db) {
     $codeType = trim($input['code_type'] ?? 'barcode');
     $movementType = trim($input['movement_type'] ?? 'in');
     $note = isset($input['note']) ? trim($input['note']) : null;
+    $userId = isset($input['user_id']) ? (int)$input['user_id'] : null;
+    $userName = isset($input['user_name']) ? trim($input['user_name']) : null;
+    $issueReason = isset($input['issue_reason']) ? trim($input['issue_reason']) : null;
+    $vehiclePlate = isset($input['vehicle_plate']) ? trim($input['vehicle_plate']) : null;
+    $issueTarget = isset($input['issue_target']) ? trim($input['issue_target']) : null;
+    $driverId = isset($input['driver_id']) ? (int)$input['driver_id'] : null;
+    $driverName = isset($input['driver_name']) ? trim($input['driver_name']) : null;
 
     // Walidacja typu kodu
     if (!in_array($codeType, ['barcode', 'product_code'], true)) {
@@ -118,17 +128,46 @@ function handlePost($db) {
         }
     }
 
+    // Walidacja powodu wydania
+    if ($issueReason !== null && !in_array($issueReason, ['departure', 'replacement'], true)) {
+        $issueReason = null;
+    }
+
+    // Walidacja celu wydania
+    if ($issueTarget !== null && !in_array($issueTarget, ['vehicle', 'driver'], true)) {
+        $issueTarget = null;
+    }
+
+    // Ograniczenie długości nazwy kierowcy
+    if ($driverName !== null && mb_strlen($driverName) > 100) {
+        $driverName = mb_substr($driverName, 0, 100);
+    }
+
+    // Ograniczenie długości tablicy rejestracyjnej
+    if ($vehiclePlate !== null && mb_strlen($vehiclePlate) > 20) {
+        $vehiclePlate = mb_substr($vehiclePlate, 0, 20);
+    }
+
     // Ograniczenie długości notatki
     if ($note !== null && mb_strlen($note) > 255) {
         $note = mb_substr($note, 0, 255);
     }
 
     // Zapisz ruch magazynowy
-    $stmt = $db->prepare("
-        INSERT INTO stock_movements (barcode, code_type, product_name, movement_type, quantity, unit, note)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ");
-    $stmt->execute([$barcode, $codeType, $productName, $movementType, $quantity, $unit, $note]);
+    try {
+        $stmt = $db->prepare("
+            INSERT INTO stock_movements (barcode, code_type, product_name, movement_type, quantity, unit, note, user_id, user_name, issue_reason, vehicle_plate, issue_target, driver_id, driver_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([$barcode, $codeType, $productName, $movementType, $quantity, $unit, $note, $userId, $userName, $issueReason, $vehiclePlate, $issueTarget, $driverId, $driverName]);
+    } catch (PDOException $e) {
+        // Fallback: kolumny issue_target/driver_id/driver_name jeszcze nie istnieją
+        $stmt = $db->prepare("
+            INSERT INTO stock_movements (barcode, code_type, product_name, movement_type, quantity, unit, note, user_id, user_name, issue_reason, vehicle_plate)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([$barcode, $codeType, $productName, $movementType, $quantity, $unit, $note, $userId, $userName, $issueReason, $vehiclePlate]);
+    }
     $newId = $db->lastInsertId();
 
     $label = $movementType === 'in' ? 'Przyjęto' : 'Wydano';
@@ -161,6 +200,70 @@ function handlePost($db) {
  *   ?low_stock=1           - Produkty z zerowym lub niskim stanem
  */
 function handleGet($db) {
+    // Pobierz listę kierowców (aktywnych pracowników)
+    if (isset($_GET['drivers'])) {
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        
+        $query = "
+            SELECT e.id, e.firstname, e.secondname, e.lastname
+            FROM employees e
+            WHERE e.deleted = 0
+              AND e.not_arrive = 0
+              AND e.cancelled = 0
+              AND (e.date_of_dismissal IS NULL OR e.date_of_dismissal > CURDATE())
+        ";
+        $params = [];
+        
+        if ($search !== '') {
+            $query .= " AND (CONCAT(e.firstname, ' ', e.lastname) LIKE ? OR CONCAT(e.lastname, ' ', e.firstname) LIKE ?)";
+            $searchParam = '%' . $search . '%';
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+        }
+        
+        $query .= " ORDER BY e.lastname ASC, e.firstname ASC LIMIT 50";
+        
+        $stmt = $db->prepare($query);
+        $stmt->execute($params);
+        $drivers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $result = [];
+        foreach ($drivers as $d) {
+            $fullName = trim($d['firstname'] . ' ' . $d['lastname']);
+            $result[] = [
+                'id' => (int)$d['id'],
+                'name' => $fullName,
+            ];
+        }
+        
+        echo json_encode(['success' => true, 'drivers' => $result]);
+        return;
+    }
+
+    // Generuj następny wolny kod SAS-N
+    if (isset($_GET['next_sas'])) {
+        $stmt = $db->prepare("
+            SELECT barcode FROM stock_movements
+            WHERE barcode LIKE 'SAS-%'
+            ORDER BY CAST(SUBSTRING(barcode, 5) AS UNSIGNED) DESC
+            LIMIT 1
+        ");
+        $stmt->execute();
+        $row = $stmt->fetch();
+
+        $nextNum = 1;
+        if ($row) {
+            $lastNum = (int)substr($row['barcode'], 4);
+            $nextNum = $lastNum + 1;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'next_code' => 'SAS-' . $nextNum,
+        ]);
+        return;
+    }
+
     // Alerty niskiego stanu (stan <= 0)
     if (isset($_GET['low_stock'])) {
         $stmt = $db->prepare("
@@ -289,15 +392,28 @@ function handleGet($db) {
     $latest = $stmt->fetch();
 
     // Pobierz ostatnie 20 ruchów
-    $stmt = $db->prepare("
-        SELECT id, movement_type, quantity, unit, note, created_at
-        FROM stock_movements
-        WHERE barcode = ?
-        ORDER BY created_at DESC
-        LIMIT 20
-    ");
-    $stmt->execute([$barcode]);
-    $movements = $stmt->fetchAll();
+    try {
+        $stmt = $db->prepare("
+            SELECT id, movement_type, quantity, unit, note, user_name, issue_reason, vehicle_plate, issue_target, driver_name, created_at
+            FROM stock_movements
+            WHERE barcode = ?
+            ORDER BY created_at DESC
+            LIMIT 20
+        ");
+        $stmt->execute([$barcode]);
+        $movements = $stmt->fetchAll();
+    } catch (PDOException $e) {
+        // Fallback: kolumny issue_target/driver_name jeszcze nie istnieją
+        $stmt = $db->prepare("
+            SELECT id, movement_type, quantity, unit, note, user_name, issue_reason, vehicle_plate, created_at
+            FROM stock_movements
+            WHERE barcode = ?
+            ORDER BY created_at DESC
+            LIMIT 20
+        ");
+        $stmt->execute([$barcode]);
+        $movements = $stmt->fetchAll();
+    }
 
     if ($latest) {
         echo json_encode([

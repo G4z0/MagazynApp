@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../l10n/translations.dart';
 import '../models/code_type.dart';
+import 'auth_service.dart';
 
 /// Serwis do komunikacji z API na serwerze LogisticsERP
 class ApiService {
@@ -25,6 +26,11 @@ class ApiService {
     required CodeType codeType,
     required String movementType,
     String? note,
+    String? issueReason,
+    String? vehiclePlate,
+    String? issueTarget,
+    int? driverId,
+    String? driverName,
   }) async {
     try {
       final body = <String, dynamic>{
@@ -38,11 +44,35 @@ class ApiService {
       if (note != null && note.trim().isNotEmpty) {
         body['note'] = note.trim();
       }
+      if (issueReason != null && issueReason.isNotEmpty) {
+        body['issue_reason'] = issueReason;
+      }
+      if (vehiclePlate != null && vehiclePlate.trim().isNotEmpty) {
+        body['vehicle_plate'] = vehiclePlate.trim();
+      }
+      if (issueTarget != null && issueTarget.isNotEmpty) {
+        body['issue_target'] = issueTarget;
+      }
+      if (driverId != null) {
+        body['driver_id'] = driverId;
+      }
+      if (driverName != null && driverName.isNotEmpty) {
+        body['driver_name'] = driverName;
+      }
+
+      // Dołącz dane użytkownika
+      final auth = AuthService();
+      if (auth.userId != null) {
+        body['user_id'] = auth.userId;
+      }
+      if (auth.displayName != null) {
+        body['user_name'] = auth.displayName;
+      }
 
       final response = await http
           .post(
             Uri.parse(_endpoint),
-            headers: {'Content-Type': 'application/json'},
+            headers: {'Content-Type': 'application/json; charset=utf-8'},
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 10));
@@ -141,6 +171,46 @@ class ApiService {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         if (data['success'] == true) {
           return List<Map<String, dynamic>>.from(data['items'] ?? []);
+        }
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Pobierz następny wolny kod wewnętrzny SAS-N.
+  static Future<String> getNextSasCode() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_endpoint?next_sas=1'))
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (data['success'] == true && data['next_code'] != null) {
+          return data['next_code'] as String;
+        }
+      }
+      return 'SAS-1';
+    } catch (_) {
+      return 'SAS-1';
+    }
+  }
+
+  /// Pobierz listę kierowców (aktywnych pracowników) z systemu ERP.
+  static Future<List<Map<String, dynamic>>> getDrivers({String search = ''}) async {
+    try {
+      var url = '$_endpoint?drivers=1';
+      if (search.isNotEmpty) {
+        url += '&search=${Uri.encodeComponent(search)}';
+      }
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (data['success'] == true) {
+          return List<Map<String, dynamic>>.from(data['drivers'] ?? []);
         }
       }
       return [];

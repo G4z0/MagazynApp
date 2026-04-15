@@ -80,7 +80,7 @@ class WorkshopApiService {
       final response = await http
           .post(
             Uri.parse(_endpoint),
-            headers: {'Content-Type': 'application/json'},
+            headers: {'Content-Type': 'application/json; charset=utf-8'},
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 15));

@@ -6,7 +6,7 @@
  */
 
 define('DB_HOST', '192.168.1.42');
-define('DB_NAME', 'logisticserp_dev');
+define('DB_NAME', 'logisticserp');
 define('DB_USER', 'logisticserp_dev');
 define('DB_PASS', '4H8k7OGi%4F$#j6NFBoimCFB0tbGQHYm');
 
@@ -22,6 +22,7 @@ function getDB() {
                 PDO::ATTR_EMULATE_PREPARES => false,
             ]
         );
+        $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
         return $pdo;
     } catch (PDOException $e) {
         http_response_code(500);

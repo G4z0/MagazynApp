@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../l10n/translations.dart';
 import '../services/api_service.dart';
+import 'product_form_screen.dart';
 
 /// Ekran stanów magazynowych — lista produktów z aktualnym stanem.
 class StockScreen extends StatefulWidget {
@@ -383,6 +384,36 @@ class _StockScreenState extends State<StockScreen> {
               ),
               const SizedBox(height: 16),
             ],
+            // Przycisk Wydaj
+            if (data != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductFormScreen(
+                          barcode: barcode,
+                          initialMovementType: 'out',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.remove_circle, color: Colors.white),
+                  label: Text(
+                    tr('BUTTON_ISSUE_GOODS'),
+                    style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: Colors.orange.shade800,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                ),
+              ),
             if (movements.isNotEmpty) ...[
               Text(
                 tr('STOCK_ITEM_HISTORY'),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/translations.dart';
 import '../services/api_service.dart';
 import '../services/offline_queue_service.dart';
+import 'manual_product_screen.dart';
 import 'scanner_screen.dart';
 import 'plate_scanner_screen.dart';
 import 'stock_screen.dart';
@@ -53,6 +54,13 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const PlateScannerScreen()),
+    );
+  }
+
+  void _openManualProduct() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ManualProductScreen()),
     );
   }
 
@@ -154,9 +162,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: _openScanner,
                 ),
                 _DashboardTile(
-                  icon: Icons.inventory_2,
-                  label: tr('TILE_STOCK_LEVELS'),
-                  onTap: () => setState(() => _currentIndex = 1),
+                  icon: Icons.add_box,
+                  label: tr('TILE_MANUAL_ADD'),
+                  onTap: _openManualProduct,
                 ),
                 _DashboardTile(
                   icon: Icons.build,
@@ -167,6 +175,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.rv_hookup,
                   label: tr('TILE_ADD_REPAIR'),
                   onTap: _openPlateScanner,
+                ),
+                _DashboardTile(
+                  icon: Icons.inventory_2,
+                  label: tr('TILE_STOCK_LEVELS'),
+                  onTap: () => setState(() => _currentIndex = 1),
                 ),
               ],
             ),

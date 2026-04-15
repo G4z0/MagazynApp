@@ -10,8 +10,9 @@ import '../services/offline_queue_service.dart';
 /// po zeskanowaniu kodu kreskowego.
 class ProductFormScreen extends StatefulWidget {
   final String barcode;
+  final String initialMovementType;
 
-  const ProductFormScreen({super.key, required this.barcode});
+  const ProductFormScreen({super.key, required this.barcode, this.initialMovementType = 'in'});
 
   @override
   State<ProductFormScreen> createState() => _ProductFormScreenState();
@@ -23,6 +24,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   final _quantityController = TextEditingController(text: '1');
   final _noteController = TextEditingController();
   final _piecesPerPackageController = TextEditingController();
+  final _vehiclePlateController = TextEditingController();
 
   bool _isSaving = false;
   bool _isChecking = true;
@@ -30,6 +32,12 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   String _selectedUnit = 'szt';
   String _movementType = 'in'; // 'in' lub 'out'
   String _targetUnit = 'szt'; // docelowa jednostka przy przeliczeniu opak/kpl
+  String _issueReason = 'departure'; // 'departure' lub 'replacement'
+  String _issueTarget = 'vehicle'; // 'vehicle' lub 'driver'
+  List<Map<String, dynamic>> _drivers = [];
+  int? _selectedDriverId;
+  String? _selectedDriverName;
+  bool _isLoadingDrivers = false;
   late CodeType _codeType;
 
   /// Czy wybrana jednostka to opakowanie/komplet (wymaga przeliczenia)
@@ -59,8 +67,25 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   @override
   void initState() {
     super.initState();
+    _movementType = widget.initialMovementType;
     _codeType = CodeType.detect(widget.barcode);
     _checkExistingBarcode();
+    _loadDrivers();
+  }
+
+  Future<void> _loadDrivers() async {
+    setState(() => _isLoadingDrivers = true);
+    try {
+      final drivers = await ApiService.getDrivers();
+      if (mounted) {
+        setState(() {
+          _drivers = drivers;
+          _isLoadingDrivers = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingDrivers = false);
+    }
   }
 
   @override
@@ -69,6 +94,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _quantityController.dispose();
     _noteController.dispose();
     _piecesPerPackageController.dispose();
+    _vehiclePlateController.dispose();
     super.dispose();
   }
 
@@ -156,6 +182,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         codeType: _codeType,
         movementType: _movementType,
         note: note,
+        issueReason: _movementType == 'out' ? _issueReason : null,
+        vehiclePlate: _movementType == 'out' && _issueTarget == 'vehicle' ? _vehiclePlateController.text.trim() : null,
+        issueTarget: _movementType == 'out' ? _issueTarget : null,
+        driverId: _movementType == 'out' && _issueTarget == 'driver' ? _selectedDriverId : null,
+        driverName: _movementType == 'out' && _issueTarget == 'driver' ? _selectedDriverName : null,
       );
 
       if (!mounted) return;
@@ -184,6 +215,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         codeType: _codeType,
         movementType: _movementType,
         note: note,
+        issueReason: _movementType == 'out' ? _issueReason : null,
+        vehiclePlate: _movementType == 'out' && _issueTarget == 'vehicle' ? _vehiclePlateController.text.trim() : null,
+        issueTarget: _movementType == 'out' ? _issueTarget : null,
+        driverId: _movementType == 'out' && _issueTarget == 'driver' ? _selectedDriverId : null,
+        driverName: _movementType == 'out' && _issueTarget == 'driver' ? _selectedDriverName : null,
       );
 
       final label = _movementType == 'in' ? tr('LOG_STOCK_IN') : tr('LOG_STOCK_OUT');
@@ -211,6 +247,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         codeType: _codeType,
         movementType: _movementType,
         note: note,
+        issueReason: _movementType == 'out' ? _issueReason : null,
+        vehiclePlate: _movementType == 'out' && _issueTarget == 'vehicle' ? _vehiclePlateController.text.trim() : null,
+        issueTarget: _movementType == 'out' ? _issueTarget : null,
+        driverId: _movementType == 'out' && _issueTarget == 'driver' ? _selectedDriverId : null,
+        driverName: _movementType == 'out' && _issueTarget == 'driver' ? _selectedDriverName : null,
       );
 
       final label2 = _movementType == 'in' ? tr('LOG_STOCK_IN') : tr('LOG_STOCK_OUT');
@@ -453,6 +494,158 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               ),
 
               const SizedBox(height: 20),
+
+              // --- Pola wydania (widoczne tylko przy 'out') ---
+              if (isOut) ...[              
+                // Powód wydania
+                Text(
+                  tr('LABEL_ISSUE_REASON'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  segments: [
+                    ButtonSegment(
+                      value: 'departure',
+                      label: Text(tr('ISSUE_DEPARTURE')),
+                      icon: const Icon(Icons.departure_board),
+                    ),
+                    ButtonSegment(
+                      value: 'replacement',
+                      label: Text(tr('ISSUE_REPLACEMENT')),
+                      icon: const Icon(Icons.swap_horiz),
+                    ),
+                  ],
+                  selected: {_issueReason},
+                  onSelectionChanged: (value) {
+                    setState(() => _issueReason = value.first);
+                  },
+                  style: ButtonStyle(
+                    backgroundColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return Colors.orange.shade800.withAlpha(180);
+                      }
+                      return _cardBg;
+                    }),
+                    foregroundColor: WidgetStateProperty.all(Colors.white),
+                    side: WidgetStateProperty.all(BorderSide(color: Colors.white.withAlpha(30))),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Cel wydania: samochód / kierowca
+                Text(
+                  tr('LABEL_ISSUE_TARGET'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  segments: [
+                    ButtonSegment(
+                      value: 'vehicle',
+                      label: Text(tr('ISSUE_TO_VEHICLE')),
+                      icon: const Icon(Icons.local_shipping),
+                    ),
+                    ButtonSegment(
+                      value: 'driver',
+                      label: Text(tr('ISSUE_TO_DRIVER')),
+                      icon: const Icon(Icons.person),
+                    ),
+                  ],
+                  selected: {_issueTarget},
+                  onSelectionChanged: (value) {
+                    setState(() {
+                      _issueTarget = value.first;
+                      if (value.first == 'vehicle') {
+                        _selectedDriverId = null;
+                        _selectedDriverName = null;
+                      } else {
+                        _vehiclePlateController.clear();
+                      }
+                    });
+                  },
+                  style: ButtonStyle(
+                    backgroundColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return Colors.blue.shade800.withAlpha(180);
+                      }
+                      return _cardBg;
+                    }),
+                    foregroundColor: WidgetStateProperty.all(Colors.white),
+                    side: WidgetStateProperty.all(BorderSide(color: Colors.white.withAlpha(30))),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Samochód (widoczny gdy target = vehicle)
+                if (_issueTarget == 'vehicle')
+                  TextFormField(
+                    controller: _vehiclePlateController,
+                    textCapitalization: TextCapitalization.characters,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: tr('LABEL_VEHICLE_PLATE'),
+                      labelStyle: const TextStyle(color: Colors.white54),
+                      hintText: tr('HINT_VEHICLE_PLATE'),
+                      hintStyle: const TextStyle(color: Colors.white24),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      prefixIcon: const Icon(Icons.local_shipping, color: _accent),
+                      filled: true,
+                      fillColor: _inputBg,
+                    ),
+                    maxLength: 20,
+                    validator: (value) {
+                      if (_issueTarget == 'vehicle' && (value == null || value.trim().isEmpty)) {
+                        return tr('VALIDATION_VEHICLE_REQUIRED');
+                      }
+                      return null;
+                    },
+                  ),
+
+                // Kierowca (widoczny gdy target = driver)
+                if (_issueTarget == 'driver')
+                  _isLoadingDrivers
+                      ? const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator(color: _accent)),
+                        )
+                      : DropdownButtonFormField<int>(
+                          value: _selectedDriverId,
+                          isExpanded: true,
+                          dropdownColor: _cardBg,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: tr('LABEL_SELECT_DRIVER'),
+                            labelStyle: const TextStyle(color: Colors.white54),
+                            hintText: tr('HINT_SELECT_DRIVER'),
+                            hintStyle: const TextStyle(color: Colors.white24),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                            prefixIcon: const Icon(Icons.person, color: _accent),
+                            filled: true,
+                            fillColor: _inputBg,
+                          ),
+                          items: _drivers.map((d) => DropdownMenuItem<int>(
+                            value: d['id'] as int,
+                            child: Text(d['name'] as String),
+                          )).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedDriverId = value;
+                              _selectedDriverName = _drivers
+                                  .where((d) => d['id'] == value)
+                                  .map((d) => d['name'] as String)
+                                  .firstOrNull;
+                            });
+                          },
+                          validator: (value) {
+                            if (_issueTarget == 'driver' && value == null) {
+                              return tr('VALIDATION_DRIVER_REQUIRED');
+                            }
+                            return null;
+                          },
+                        ),
+                const SizedBox(height: 4),
+              ],
 
               // Formularz
               if (_isChecking)
