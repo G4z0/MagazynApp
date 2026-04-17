@@ -20,6 +20,9 @@ switch ($method) {
     case 'GET':
         handleGet($db);
         break;
+    case 'PUT':
+        handlePut($db);
+        break;
     default:
         http_response_code(405);
         echo json_encode(['error' => 'Metoda niedozwolona']);
@@ -221,7 +224,7 @@ function handleGet($db) {
             $params[] = $searchParam;
         }
         
-        $query .= " ORDER BY e.lastname ASC, e.firstname ASC LIMIT 50";
+        $query .= " ORDER BY e.lastname ASC, e.firstname ASC";
         
         $stmt = $db->prepare($query);
         $stmt->execute($params);
@@ -436,4 +439,60 @@ function handleGet($db) {
             'movements' => [],
         ]);
     }
+}
+
+/**
+ * PUT - Zmiana nazwy produktu (aktualizacja product_name dla wszystkich ruchów z danym barcode)
+ *
+ * Body (JSON):
+ *   {
+ *     "barcode": "5901234123457",
+ *     "new_name": "Nowa nazwa produktu"
+ *   }
+ */
+function handlePut($db) {
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    if (empty($input['barcode']) || empty($input['new_name'])) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Wymagane pola: barcode, new_name'
+        ]);
+        return;
+    }
+
+    $barcode = trim($input['barcode']);
+    $newName = trim($input['new_name']);
+
+    if (mb_strlen($newName) > 255) {
+        $newName = mb_substr($newName, 0, 255);
+    }
+
+    // Sprawdź czy produkt istnieje
+    $stmt = $db->prepare("SELECT COUNT(*) AS cnt FROM stock_movements WHERE barcode = ?");
+    $stmt->execute([$barcode]);
+    $row = $stmt->fetch();
+
+    if ((int)$row['cnt'] === 0) {
+        http_response_code(404);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Produkt o podanym kodzie nie istnieje'
+        ]);
+        return;
+    }
+
+    // Zaktualizuj nazwę we wszystkich ruchach z tym kodem
+    $stmt = $db->prepare("UPDATE stock_movements SET product_name = ? WHERE barcode = ?");
+    $stmt->execute([$newName, $barcode]);
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Nazwa produktu została zmieniona',
+        'data' => [
+            'barcode' => $barcode,
+            'product_name' => $newName,
+        ]
+    ]);
 }

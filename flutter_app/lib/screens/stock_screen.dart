@@ -365,13 +365,34 @@ class _StockScreenState extends State<StockScreen> {
               ),
             ),
             if (data != null) ...[
-              Text(
-                data['product_name'] ?? tr('PRODUCT_NO_NAME'),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      data['product_name'] ?? tr('PRODUCT_NO_NAME'),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _showRenameDialog(
+                        barcode,
+                        data['product_name'] ?? '',
+                      );
+                    },
+                    icon: const Icon(Icons.edit, color: accent, size: 20),
+                    tooltip: tr('STOCK_RENAME_PRODUCT'),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  ),
+                ],
               ),
               const SizedBox(height: 4),
               Text(
@@ -495,6 +516,74 @@ class _StockScreenState extends State<StockScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showRenameDialog(String barcode, String currentName) async {
+    final controller = TextEditingController(text: currentName);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2F3A),
+        title: Text(
+          tr('STOCK_RENAME_PRODUCT'),
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: tr('STOCK_RENAME_HINT'),
+            hintStyle: const TextStyle(color: Colors.white38),
+            filled: true,
+            fillColor: const Color(0xFF1C1E26),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(tr('BUTTON_CANCEL'), style: const TextStyle(color: Colors.white54)),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) {
+                Navigator.pop(ctx, value);
+              }
+            },
+            style: FilledButton.styleFrom(backgroundColor: accent),
+            child: Text(tr('BUTTON_SAVE'), style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (newName == null || newName == currentName) return;
+
+    final success = await ApiService.renameProduct(barcode: barcode, newName: newName);
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('STOCK_RENAME_SUCCESS')),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+        _loadProducts(search: _searchController.text.trim());
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('STOCK_RENAME_ERROR')),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
   }
 
   String _formatQty(dynamic qty) {

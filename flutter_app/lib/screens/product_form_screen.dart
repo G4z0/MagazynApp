@@ -342,6 +342,21 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     );
   }
 
+  void _showDriverSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => _DriverSearchDialog(
+        drivers: _drivers,
+        onSelected: (id, name) {
+          setState(() {
+            _selectedDriverId = id;
+            _selectedDriverName = name;
+          });
+        },
+      ),
+    );
+  }
+
   static const Color _accent = Color(0xFF3498DB);
   static const Color _darkBg = Color(0xFF1C1E26);
   static const Color _cardBg = Color(0xFF2C2F3A);
@@ -551,6 +566,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                       label: Text(tr('ISSUE_TO_DRIVER')),
                       icon: const Icon(Icons.person),
                     ),
+                    ButtonSegment(
+                      value: 'workshop',
+                      label: Text(tr('ISSUE_TO_WORKSHOP')),
+                      icon: const Icon(Icons.build),
+                    ),
                   ],
                   selected: {_issueTarget},
                   onSelectionChanged: (value) {
@@ -559,8 +579,12 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                       if (value.first == 'vehicle') {
                         _selectedDriverId = null;
                         _selectedDriverName = null;
+                      } else if (value.first == 'driver') {
+                        _vehiclePlateController.clear();
                       } else {
                         _vehiclePlateController.clear();
+                        _selectedDriverId = null;
+                        _selectedDriverName = null;
                       }
                     });
                   },
@@ -609,42 +633,49 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           padding: EdgeInsets.all(16),
                           child: Center(child: CircularProgressIndicator(color: _accent)),
                         )
-                      : DropdownButtonFormField<int>(
-                          value: _selectedDriverId,
-                          isExpanded: true,
-                          dropdownColor: _cardBg,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: tr('LABEL_SELECT_DRIVER'),
-                            labelStyle: const TextStyle(color: Colors.white54),
-                            hintText: tr('HINT_SELECT_DRIVER'),
-                            hintStyle: const TextStyle(color: Colors.white24),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                            prefixIcon: const Icon(Icons.person, color: _accent),
-                            filled: true,
-                            fillColor: _inputBg,
-                          ),
-                          items: _drivers.map((d) => DropdownMenuItem<int>(
-                            value: d['id'] as int,
-                            child: Text(d['name'] as String),
-                          )).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedDriverId = value;
-                              _selectedDriverName = _drivers
-                                  .where((d) => d['id'] == value)
-                                  .map((d) => d['name'] as String)
-                                  .firstOrNull;
-                            });
-                          },
+                      : FormField<int>(
+                          initialValue: _selectedDriverId,
                           validator: (value) {
-                            if (_issueTarget == 'driver' && value == null) {
+                            if (_issueTarget == 'driver' && _selectedDriverId == null) {
                               return tr('VALIDATION_DRIVER_REQUIRED');
                             }
                             return null;
                           },
+                          builder: (FormFieldState<int> field) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                GestureDetector(
+                                  onTap: () => _showDriverSearchDialog(),
+                                  child: InputDecorator(
+                                    decoration: InputDecoration(
+                                      labelText: tr('LABEL_SELECT_DRIVER'),
+                                      labelStyle: const TextStyle(color: Colors.white54),
+                                      hintText: tr('HINT_SELECT_DRIVER'),
+                                      hintStyle: const TextStyle(color: Colors.white24),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                      prefixIcon: const Icon(Icons.person, color: _accent),
+                                      suffixIcon: const Icon(Icons.search, color: Colors.white38),
+                                      filled: true,
+                                      fillColor: _inputBg,
+                                      errorText: field.errorText,
+                                    ),
+                                    child: Text(
+                                      _selectedDriverName ?? tr('HINT_SELECT_DRIVER'),
+                                      style: TextStyle(
+                                        color: _selectedDriverName != null ? Colors.white : Colors.white24,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 16),
+                Divider(color: Colors.white.withAlpha(30)),
+                const SizedBox(height: 12),
               ],
 
               // Formularz
@@ -946,5 +977,133 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     final dt = DateTime.tryParse(iso);
     if (dt == null) return iso;
     return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+/// Dialog z wyszukiwarką kierowców
+class _DriverSearchDialog extends StatefulWidget {
+  final List<Map<String, dynamic>> drivers;
+  final void Function(int id, String name) onSelected;
+
+  const _DriverSearchDialog({required this.drivers, required this.onSelected});
+
+  @override
+  State<_DriverSearchDialog> createState() => _DriverSearchDialogState();
+}
+
+class _DriverSearchDialogState extends State<_DriverSearchDialog> {
+  final _searchController = TextEditingController();
+  List<Map<String, dynamic>> _filtered = [];
+
+  static const Color _accent = Color(0xFF3498DB);
+  static const Color _cardBg = Color(0xFF2C2F3A);
+  static const Color _inputBg = Color(0xFF23262E);
+
+  @override
+  void initState() {
+    super.initState();
+    _filtered = widget.drivers;
+  }
+
+  void _filter(String query) {
+    final q = query.toLowerCase().trim();
+    setState(() {
+      if (q.isEmpty) {
+        _filtered = widget.drivers;
+      } else {
+        _filtered = widget.drivers
+            .where((d) => (d['name'] as String).toLowerCase().contains(q))
+            .toList();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: _cardBg,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.7,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: tr('HINT_SEARCH_DRIVER'),
+                  hintStyle: const TextStyle(color: Colors.white24),
+                  prefixIcon: const Icon(Icons.search, color: _accent),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.white38),
+                          onPressed: () {
+                            _searchController.clear();
+                            _filter('');
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  filled: true,
+                  fillColor: _inputBg,
+                ),
+                onChanged: _filter,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                '${_filtered.length} ${tr('LABEL_DRIVERS_COUNT')}',
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: _filtered.isEmpty
+                  ? Center(
+                      child: Text(
+                        tr('LABEL_NO_RESULTS'),
+                        style: const TextStyle(color: Colors.white38),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _filtered.length,
+                      itemBuilder: (ctx, i) {
+                        final d = _filtered[i];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: _accent.withAlpha(40),
+                            child: Text(
+                              (d['name'] as String).substring(0, 1).toUpperCase(),
+                              style: const TextStyle(color: _accent, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          title: Text(
+                            d['name'] as String,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          onTap: () {
+                            widget.onSelected(d['id'] as int, d['name'] as String);
+                            Navigator.pop(ctx);
+                          },
+                        );
+                      },
+                    ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -218,6 +218,33 @@ class ApiService {
       return [];
     }
   }
+
+  /// Zmień nazwę produktu (aktualizuje product_name we wszystkich ruchach z danym barcode).
+  static Future<bool> renameProduct({
+    required String barcode,
+    required String newName,
+  }) async {
+    try {
+      final response = await http
+          .put(
+            Uri.parse(_endpoint),
+            headers: {'Content-Type': 'application/json; charset=utf-8'},
+            body: jsonEncode({
+              'barcode': barcode,
+              'new_name': newName,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return data['success'] == true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
 /// Wyjątek rzucany w przypadku błędów API (biznesowych)

@@ -9,8 +9,13 @@ import 'product_form_screen.dart';
 ///
 /// Po zeskanowaniu kodu automatycznie przechodzi
 /// do formularza wpisywania nazwy produktu.
+///
+/// Jeśli [returnBarcodeOnly] = true, po potwierdzeniu kodu
+/// wraca z wynikiem (String) zamiast przechodzić do formularza.
 class ScannerScreen extends StatefulWidget {
-  const ScannerScreen({super.key});
+  final bool returnBarcodeOnly;
+
+  const ScannerScreen({super.key, this.returnBarcodeOnly = false});
 
   @override
   State<ScannerScreen> createState() => _ScannerScreenState();
@@ -70,6 +75,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
     setState(() => _isNavigating = true);
 
     final code = _detectedCode!;
+
+    // W trybie zwracania kodu — wróć z wynikiem
+    if (widget.returnBarcodeOnly) {
+      Navigator.pop(context, code);
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -418,12 +430,16 @@ class _ScannerScreenState extends State<ScannerScreen> {
               final code = textController.text.trim();
               if (code.isNotEmpty) {
                 Navigator.pop(ctx);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ProductFormScreen(barcode: code),
-                  ),
-                );
+                if (widget.returnBarcodeOnly) {
+                  Navigator.pop(context, code);
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProductFormScreen(barcode: code),
+                    ),
+                  );
+                }
               }
             },
             child: Text(tr('BUTTON_NEXT')),

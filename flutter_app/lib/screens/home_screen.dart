@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../l10n/translations.dart';
-import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../services/offline_queue_service.dart';
+import 'batch_issue_screen.dart';
 import 'manual_product_screen.dart';
 import 'scanner_screen.dart';
 import 'plate_scanner_screen.dart';
@@ -18,8 +19,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  List<Map<String, dynamic>> _lowStockItems = [];
-  bool _lowStockLoading = true;
 
   static const Color accent = Color(0xFF3498DB);
   static const Color cardBg = Color(0xFF2C2F3A);
@@ -30,17 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadLowStock();
-  }
-
-  Future<void> _loadLowStock() async {
-    final items = await ApiService.getLowStockAlerts();
-    if (mounted) {
-      setState(() {
-        _lowStockItems = items;
-        _lowStockLoading = false;
-      });
-    }
   }
 
   void _openScanner() {
@@ -61,6 +49,13 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ManualProductScreen()),
+    );
+  }
+
+  void _openBatchIssue() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const BatchIssueScreen()),
     );
   }
 
@@ -106,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          tr('HOME_TITLE'),
+                          '${tr('HOME_GREETING')} ${AuthService().displayName?.split(' ').first ?? ''}',
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -169,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 _DashboardTile(
                   icon: Icons.build,
                   label: tr('TILE_ISSUE_FOR_REPAIR'),
-                  onTap: _openScanner,
+                  onTap: _openBatchIssue,
                 ),
                 _DashboardTile(
                   icon: Icons.rv_hookup,
@@ -184,111 +179,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-
-          // Low stock alerts
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-              child: Row(
-                children: [
-                  Icon(Icons.warning_amber, color: Colors.orange.shade400, size: 18),
-                  const SizedBox(width: 6),
-                  Text(
-                    tr('LOW_STOCK_TITLE'),
-                    style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                  const Spacer(),
-                  if (_lowStockLoading)
-                    const SizedBox(
-                      width: 16, height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24),
-                    )
-                  else
-                    Text(
-                      '${_lowStockItems.length}',
-                      style: TextStyle(color: Colors.orange.shade400, fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          if (!_lowStockLoading && _lowStockItems.isEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Card(
-                  color: const Color(0xFF2C2F3A),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Center(
-                      child: Text(
-                        tr('LOW_STOCK_EMPTY'),
-                        style: const TextStyle(color: Colors.white38, fontSize: 13),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final item = _lowStockItems[index];
-                    final name = item['product_name'] ?? tr('PRODUCT_NO_NAME');
-                    final stock = double.tryParse(item['current_stock'].toString()) ?? 0;
-                    final unit = item['unit'] ?? 'szt';
-                    final fmtStock = stock == stock.roundToDouble()
-                        ? stock.toInt().toString()
-                        : stock.toStringAsFixed(2);
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: cardBg,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.shade900.withAlpha(80)),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: Colors.red.withAlpha(25),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(Icons.warning_amber, color: Colors.red.shade300, size: 18),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              name,
-                              style: const TextStyle(color: Colors.white, fontSize: 13),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '$fmtStock $unit',
-                            style: TextStyle(
-                              color: Colors.red.shade300,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  childCount: _lowStockItems.length,
-                ),
-              ),
-            ),
         ],
       ),
     );
