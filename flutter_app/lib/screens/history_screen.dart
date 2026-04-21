@@ -26,7 +26,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Future<void> _load() async {
     final items = await LocalHistoryService().getHistory(limit: 200);
-    if (mounted) setState(() { _items = items; _isLoading = false; });
+    if (mounted)
+      setState(() {
+        _items = items;
+        _isLoading = false;
+      });
   }
 
   Future<void> _clearHistory() async {
@@ -34,13 +38,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: _cardBg,
-        title: Text(tr('DIALOG_CLEAR_HISTORY_TITLE'), style: const TextStyle(color: Colors.white)),
+        title: Text(tr('DIALOG_CLEAR_HISTORY_TITLE'),
+            style: const TextStyle(color: Colors.white)),
         content: Text(tr('DIALOG_CLEAR_HISTORY_CONTENT'),
             style: const TextStyle(color: _secondaryText)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(tr('BUTTON_CANCEL'), style: const TextStyle(color: _secondaryText)),
+            child: Text(tr('BUTTON_CANCEL'),
+                style: const TextStyle(color: _secondaryText)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
@@ -58,26 +64,41 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   IconData _iconForAction(String type) {
     switch (type) {
-      case 'stock_in': return Icons.add_circle;
-      case 'stock_out': return Icons.remove_circle;
-      case 'scan': return Icons.qr_code_scanner;
-      case 'stock_check': return Icons.search;
-      case 'login': return Icons.login;
-      case 'logout': return Icons.logout;
-      case 'repair_add': return Icons.build;
-      default: return Icons.history;
+      case 'stock_in':
+        return Icons.add_circle;
+      case 'stock_out':
+        return Icons.remove_circle;
+      case 'scan':
+        return Icons.qr_code_scanner;
+      case 'stock_check':
+        return Icons.search;
+      case 'login':
+        return Icons.login;
+      case 'logout':
+        return Icons.logout;
+      case 'repair_add':
+        return Icons.build;
+      default:
+        return Icons.history;
     }
   }
 
   Color _colorForAction(String type) {
     switch (type) {
-      case 'stock_in': return Colors.green;
-      case 'stock_out': return Colors.orange;
-      case 'scan': return _accent;
-      case 'login': return _accent;
-      case 'logout': return _secondaryText;
-      case 'repair_add': return Colors.purple;
-      default: return _secondaryText;
+      case 'stock_in':
+        return Colors.green;
+      case 'stock_out':
+        return Colors.orange;
+      case 'scan':
+        return _accent;
+      case 'login':
+        return _accent;
+      case 'logout':
+        return _secondaryText;
+      case 'repair_add':
+        return Colors.purple;
+      default:
+        return _secondaryText;
     }
   }
 
@@ -89,7 +110,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final date = DateTime(dt.year, dt.month, dt.day);
     final diff = today.difference(date).inDays;
 
-    final time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final time =
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     if (diff == 0) return tr('DATE_TODAY', args: {'time': time});
     if (diff == 1) return tr('DATE_YESTERDAY', args: {'time': time});
     return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} $time';
@@ -106,12 +128,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
               children: [
                 Text(
                   tr('HISTORY_TITLE'),
-                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 if (_items.isNotEmpty)
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: _secondaryText),
+                    icon:
+                        const Icon(Icons.delete_outline, color: _secondaryText),
                     onPressed: _clearHistory,
                     tooltip: tr('TOOLTIP_CLEAR_HISTORY'),
                   ),
@@ -135,9 +161,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
           children: [
             const Icon(Icons.history, color: Color(0xFFA0A5B1), size: 64),
             const SizedBox(height: 12),
-            Text(tr('HISTORY_EMPTY_TITLE'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(tr('HISTORY_EMPTY_TITLE'),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
-            Text(tr('HISTORY_EMPTY_SUBTITLE'), style: const TextStyle(color: Color(0xFFA0A5B1), fontSize: 13)),
+            Text(tr('HISTORY_EMPTY_SUBTITLE'),
+                style: const TextStyle(color: Color(0xFFA0A5B1), fontSize: 13)),
           ],
         ),
       );
@@ -172,7 +203,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     color: _colorForAction(type).withAlpha(30),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(_iconForAction(type), color: _colorForAction(type), size: 20),
+                  child: Icon(_iconForAction(type),
+                      color: _colorForAction(type), size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -181,7 +213,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -190,7 +225,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           padding: const EdgeInsets.only(top: 2),
                           child: Text(
                             subtitle,
-                            style: const TextStyle(color: _secondaryText, fontSize: 12),
+                            style: const TextStyle(
+                                color: _secondaryText, fontSize: 12),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -198,8 +234,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 3),
                         child: Text(
-                          userName != null ? '${_formatDate(createdAt)} • $userName' : _formatDate(createdAt),
-                          style: TextStyle(color: _secondaryText.withAlpha(150), fontSize: 11),
+                          userName != null
+                              ? '${_formatDate(createdAt)} • $userName'
+                              : _formatDate(createdAt),
+                          style: TextStyle(
+                              color: _secondaryText.withAlpha(150),
+                              fontSize: 11),
                         ),
                       ),
                     ],

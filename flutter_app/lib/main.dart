@@ -84,7 +84,11 @@ class _AuthGateState extends State<_AuthGate> {
 
   Future<void> _checkSession() async {
     final loggedIn = await AuthService().loadSession();
-    if (mounted) setState(() { _loggedIn = loggedIn; _checking = false; });
+    if (mounted)
+      setState(() {
+        _loggedIn = loggedIn;
+        _checking = false;
+      });
   }
 
   @override

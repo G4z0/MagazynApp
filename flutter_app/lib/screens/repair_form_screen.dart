@@ -129,7 +129,9 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedEmployeeId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr('VALIDATION_SELECT_EMPLOYEE')), backgroundColor: Colors.orange),
+        SnackBar(
+            content: Text(tr('VALIDATION_SELECT_EMPLOYEE')),
+            backgroundColor: Colors.orange),
       );
       return;
     }
@@ -145,7 +147,9 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
       if (entry.value) {
         services.add({
           'id': entry.key,
-          'amount': double.tryParse(_serviceAmountControllers[entry.key]?.text ?? '') ?? 0,
+          'amount': double.tryParse(
+                  _serviceAmountControllers[entry.key]?.text ?? '') ??
+              0,
           'note': _serviceNoteControllers[entry.key]?.text ?? '',
         });
       }
@@ -206,11 +210,13 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: _cardBg,
         icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-        title: Text(tr('DIALOG_SUCCESS_TITLE'), style: const TextStyle(color: Colors.white)),
+        title: Text(tr('DIALOG_SUCCESS_TITLE'),
+            style: const TextStyle(color: Colors.white)),
         content: Text(message, style: const TextStyle(color: Colors.white70)),
         actions: [
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _accent, foregroundColor: Colors.white),
+            style: FilledButton.styleFrom(
+                backgroundColor: _accent, foregroundColor: Colors.white),
             onPressed: () {
               Navigator.pop(ctx);
               Navigator.pop(context);
@@ -258,7 +264,9 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
-                            v['object_type'] == 2 ? Icons.rv_hookup : Icons.local_shipping,
+                            v['object_type'] == 2
+                                ? Icons.rv_hookup
+                                : Icons.local_shipping,
                             color: _accent,
                             size: 26,
                           ),
@@ -280,14 +288,19 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 v['object_label'] ?? '',
-                                style: const TextStyle(color: _secondaryText, fontSize: 13),
+                                style: const TextStyle(
+                                    color: _secondaryText, fontSize: 13),
                               ),
-                              if (v['vin'] != null && (v['vin'] as String).isNotEmpty)
+                              if (v['vin'] != null &&
+                                  (v['vin'] as String).isNotEmpty)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 2),
                                   child: Text(
                                     'VIN: ${v['vin']}',
-                                    style: TextStyle(color: _secondaryText.withAlpha(120), fontSize: 11, fontFamily: 'monospace'),
+                                    style: TextStyle(
+                                        color: _secondaryText.withAlpha(120),
+                                        fontSize: 11,
+                                        fontFamily: 'monospace'),
                                   ),
                                 ),
                             ],
@@ -303,21 +316,25 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                   GestureDetector(
                     onTap: _pickDate,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
                         color: _inputBg,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.calendar_today, color: _accent, size: 20),
+                          const Icon(Icons.calendar_today,
+                              color: _accent, size: 20),
                           const SizedBox(width: 12),
                           Text(
                             '${_selectedDate.day.toString().padLeft(2, '0')}.${_selectedDate.month.toString().padLeft(2, '0')}.${_selectedDate.year}',
-                            style: const TextStyle(color: Colors.white, fontSize: 16),
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 16),
                           ),
                           const Spacer(),
-                          const Icon(Icons.edit, color: _secondaryText, size: 18),
+                          const Icon(Icons.edit,
+                              color: _secondaryText, size: 18),
                         ],
                       ),
                     ),
@@ -355,7 +372,8 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                         );
                       }).toList(),
                       onChanged: (v) => setState(() => _selectedEmployeeId = v),
-                      validator: (v) => v == null ? tr('VALIDATION_REQUIRED') : null,
+                      validator: (v) =>
+                          v == null ? tr('VALIDATION_REQUIRED') : null,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -376,13 +394,14 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                     controller: _laborCostController,
                     icon: Icons.payments,
                     hint: '0.00',
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                   ),
                   const SizedBox(height: 16),
 
                   // Usługi warsztatowe
                   if (_serviceGroups.isNotEmpty) ...[
-                      _sectionLabel(tr('LABEL_WORKSHOP_SERVICES')),
+                    _sectionLabel(tr('LABEL_WORKSHOP_SERVICES')),
                     ..._serviceGroups.map((group) => _buildServiceGroup(group)),
                     const SizedBox(height: 8),
                   ],
@@ -395,11 +414,13 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                       TextButton.icon(
                         onPressed: _addCustomService,
                         icon: const Icon(Icons.add, size: 18, color: _accent),
-                        label: Text(tr('BUTTON_ADD'), style: const TextStyle(color: _accent)),
+                        label: Text(tr('BUTTON_ADD'),
+                            style: const TextStyle(color: _accent)),
                       ),
                     ],
                   ),
-                  ..._customServices.asMap().entries.map((entry) => _buildCustomService(entry.key, entry.value)),
+                  ..._customServices.asMap().entries.map(
+                      (entry) => _buildCustomService(entry.key, entry.value)),
                   const SizedBox(height: 16),
 
                   // Wykorzystane części
@@ -410,12 +431,14 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                       TextButton.icon(
                         onPressed: _showPartsSearchDialog,
                         icon: const Icon(Icons.add, size: 18, color: _accent),
-                        label: Text(tr('BUTTON_ADD'), style: const TextStyle(color: _accent)),
+                        label: Text(tr('BUTTON_ADD'),
+                            style: const TextStyle(color: _accent)),
                       ),
                     ],
                   ),
                   if (_selectedParts.isNotEmpty)
-                    ..._selectedParts.asMap().entries.map((entry) => _buildSelectedPart(entry.key, entry.value)),
+                    ..._selectedParts.asMap().entries.map(
+                        (entry) => _buildSelectedPart(entry.key, entry.value)),
                   if (_selectedParts.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -425,7 +448,9 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Center(
-                        child: Text(tr('REPAIR_NO_PARTS'), style: const TextStyle(color: _secondaryText, fontSize: 13)),
+                        child: Text(tr('REPAIR_NO_PARTS'),
+                            style: const TextStyle(
+                                color: _secondaryText, fontSize: 13)),
                       ),
                     ),
                   const SizedBox(height: 16),
@@ -451,18 +476,23 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                         backgroundColor: _accent,
                         foregroundColor: Colors.white,
                         disabledBackgroundColor: _accent.withAlpha(80),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
                       ),
                       icon: _isSaving
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
                             )
                           : const Icon(Icons.build, color: Colors.white),
                       label: Text(
-                        _isSaving ? tr('BUTTON_SAVING') : tr('BUTTON_ADD_REPAIR'),
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                        _isSaving
+                            ? tr('BUTTON_SAVING')
+                            : tr('BUTTON_ADD_REPAIR'),
+                        style: const TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -475,7 +505,11 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
   Widget _sectionLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 6),
-      child: Text(text, style: const TextStyle(color: _secondaryText, fontSize: 13, fontWeight: FontWeight.w500)),
+      child: Text(text,
+          style: const TextStyle(
+              color: _secondaryText,
+              fontSize: 13,
+              fontWeight: FontWeight.w500)),
     );
   }
 
@@ -541,7 +575,11 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(groupName, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                    child: Text(groupName,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500)),
                   ),
                   Icon(
                     isExpanded ? Icons.expand_less : Icons.expand_more,
@@ -567,13 +605,16 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                 final svcId = svc['id'] as int;
                 final svcName = svc['name'] as String? ?? '';
                 _selectedServices.putIfAbsent(svcId, () => false);
-                _serviceAmountControllers.putIfAbsent(svcId, () => TextEditingController());
-                _serviceNoteControllers.putIfAbsent(svcId, () => TextEditingController());
+                _serviceAmountControllers.putIfAbsent(
+                    svcId, () => TextEditingController());
+                _serviceNoteControllers.putIfAbsent(
+                    svcId, () => TextEditingController());
                 final isSelected = _selectedServices[svcId] == true;
 
                 return GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => setState(() => _selectedServices[svcId] = !isSelected),
+                  onTap: () =>
+                      setState(() => _selectedServices[svcId] = !isSelected),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -587,7 +628,9 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                               width: 22,
                               child: Center(
                                 child: Icon(
-                                  isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                                  isSelected
+                                      ? Icons.check_box
+                                      : Icons.check_box_outline_blank,
                                   color: isSelected ? _accent : _secondaryText,
                                   size: 22,
                                 ),
@@ -624,15 +667,20 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                           padding: const EdgeInsets.only(left: 32, bottom: 8),
                           child: TextField(
                             controller: _serviceAmountControllers[svcId],
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 13),
                             decoration: InputDecoration(
                               hintText: tr('HINT_AMOUNT_PLN'),
-                              hintStyle: TextStyle(color: _secondaryText.withAlpha(120), fontSize: 12),
+                              hintStyle: TextStyle(
+                                  color: _secondaryText.withAlpha(120),
+                                  fontSize: 12),
                               filled: true,
                               fillColor: _inputBg,
                               isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 8),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                                 borderSide: BorderSide.none,
@@ -667,7 +715,8 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
         expand: false,
         builder: (_, scrollCtrl) => _PartsSearchSheet(
           scrollController: scrollCtrl,
-          alreadySelected: _selectedParts.map((p) => '${p.barcode}_${p.unit}').toSet(),
+          alreadySelected:
+              _selectedParts.map((p) => '${p.barcode}_${p.unit}').toSet(),
           onPartSelected: (part) {
             setState(() {
               _selectedParts.add(part);
@@ -692,7 +741,10 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
           Expanded(
             child: Text(
               part.name,
-              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -715,10 +767,15 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                 SizedBox(
                   width: 44,
                   child: TextField(
-                    controller: TextEditingController(text: _fmtQty(part.quantity)),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    controller:
+                        TextEditingController(text: _fmtQty(part.quantity)),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
                       isDense: true,
@@ -785,11 +842,13 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: tr('HINT_SERVICE_NAME'),
-                    hintStyle: const TextStyle(color: _secondaryText, fontSize: 13),
+                    hintStyle:
+                        const TextStyle(color: _secondaryText, fontSize: 13),
                     filled: true,
                     fillColor: _inputBg,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
@@ -811,15 +870,18 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
               Expanded(
                 child: TextField(
                   controller: cs.amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
                     hintText: tr('HINT_AMOUNT_PLN'),
-                    hintStyle: TextStyle(color: _secondaryText.withAlpha(120), fontSize: 12),
+                    hintStyle: TextStyle(
+                        color: _secondaryText.withAlpha(120), fontSize: 12),
                     filled: true,
                     fillColor: _inputBg,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
@@ -835,11 +897,13 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
                     hintText: tr('HINT_NOTE'),
-                    hintStyle: TextStyle(color: _secondaryText.withAlpha(120), fontSize: 12),
+                    hintStyle: TextStyle(
+                        color: _secondaryText.withAlpha(120), fontSize: 12),
                     filled: true,
                     fillColor: _inputBg,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
@@ -961,7 +1025,8 @@ class _PartsSearchSheetState extends State<_PartsSearchSheet> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             tr('PARTS_SHEET_TITLE'),
-            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+                color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
         const SizedBox(height: 12),
@@ -973,7 +1038,7 @@ class _PartsSearchSheetState extends State<_PartsSearchSheet> {
             autofocus: true,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-                hintText: tr('PARTS_SEARCH_HINT'),
+              hintText: tr('PARTS_SEARCH_HINT'),
               hintStyle: const TextStyle(color: Colors.white38),
               filled: true,
               fillColor: _inputBg,
@@ -982,7 +1047,8 @@ class _PartsSearchSheetState extends State<_PartsSearchSheet> {
                 borderSide: BorderSide.none,
               ),
               prefixIcon: const Icon(Icons.search, color: Colors.white38),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             onChanged: _onSearchChanged,
           ),
@@ -1006,23 +1072,29 @@ class _PartsSearchSheetState extends State<_PartsSearchSheet> {
                         final barcode = p['barcode'] ?? '';
                         final name = p['product_name'] ?? tr('PRODUCT_NO_NAME');
                         final unit = p['unit'] ?? 'szt';
-                        final stock = double.tryParse(p['current_stock'].toString()) ?? 0;
+                        final stock =
+                            double.tryParse(p['current_stock'].toString()) ?? 0;
                         final key = '${barcode}_$unit';
-                        final alreadyAdded = widget.alreadySelected.contains(key);
+                        final alreadyAdded =
+                            widget.alreadySelected.contains(key);
 
                         return Container(
                           margin: const EdgeInsets.only(bottom: 6),
                           decoration: BoxDecoration(
-                            color: alreadyAdded ? _cardBg.withAlpha(100) : _cardBg,
+                            color:
+                                alreadyAdded ? _cardBg.withAlpha(100) : _cardBg,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: ListTile(
                             dense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 4),
                             title: Text(
                               name,
                               style: TextStyle(
-                                color: alreadyAdded ? Colors.white38 : Colors.white,
+                                color: alreadyAdded
+                                    ? Colors.white38
+                                    : Colors.white,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -1031,11 +1103,14 @@ class _PartsSearchSheetState extends State<_PartsSearchSheet> {
                             ),
                             subtitle: Text(
                               '$barcode  ·  ${_fmtQty(stock)} $unit',
-                              style: const TextStyle(color: _secondaryText, fontSize: 11),
+                              style: const TextStyle(
+                                  color: _secondaryText, fontSize: 11),
                             ),
                             trailing: alreadyAdded
-                                ? const Icon(Icons.check, color: Colors.green, size: 20)
-                                : Icon(Icons.add_circle_outline, color: _accent, size: 22),
+                                ? const Icon(Icons.check,
+                                    color: Colors.green, size: 20)
+                                : Icon(Icons.add_circle_outline,
+                                    color: _accent, size: 22),
                             onTap: alreadyAdded
                                 ? null
                                 : () {

@@ -31,6 +31,8 @@ class ApiService {
     String? issueTarget,
     int? driverId,
     String? driverName,
+    String? locationRack,
+    int? locationShelf,
   }) async {
     try {
       final body = <String, dynamic>{
@@ -58,6 +60,12 @@ class ApiService {
       }
       if (driverName != null && driverName.isNotEmpty) {
         body['driver_name'] = driverName;
+      }
+      if (locationRack != null &&
+          locationRack.isNotEmpty &&
+          locationShelf != null) {
+        body['location_rack'] = locationRack;
+        body['location_shelf'] = locationShelf;
       }
 
       // Dołącz dane użytkownika
@@ -87,7 +95,8 @@ class ApiService {
       }
 
       throw ApiException(
-        data['error'] ?? tr('ERROR_SERVER_STATUS', args: {'code': '${response.statusCode}'}),
+        data['error'] ??
+            tr('ERROR_SERVER_STATUS', args: {'code': '${response.statusCode}'}),
       );
     } on http.ClientException {
       throw NetworkException(tr('ERROR_NO_CONNECTION'));
@@ -102,8 +111,7 @@ class ApiService {
   static Future<Map<String, dynamic>?> checkBarcode(String barcode) async {
     try {
       final uri = Uri.parse('$_endpoint?barcode=$barcode');
-      final response =
-          await http.get(uri).timeout(const Duration(seconds: 10));
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -119,13 +127,15 @@ class ApiService {
 
   /// Pobierz listę wszystkich produktów ze stanami magazynowymi.
   /// Opcjonalnie filtruj po nazwie lub kodzie.
-  static Future<List<Map<String, dynamic>>> getStockList({String search = ''}) async {
+  static Future<List<Map<String, dynamic>>> getStockList(
+      {String search = ''}) async {
     try {
       var url = '$_endpoint?list=1';
       if (search.isNotEmpty) {
         url += '&search=${Uri.encodeComponent(search)}';
       }
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      final response =
+          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -140,13 +150,15 @@ class ApiService {
   }
 
   /// Pobierz dostępne części (stan > 0) do wyboru w formularzu naprawy.
-  static Future<List<Map<String, dynamic>>> getAvailableParts({String search = ''}) async {
+  static Future<List<Map<String, dynamic>>> getAvailableParts(
+      {String search = ''}) async {
     try {
       var url = '$_endpoint?parts=1';
       if (search.isNotEmpty) {
         url += '&search=${Uri.encodeComponent(search)}';
       }
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      final response =
+          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -199,13 +211,15 @@ class ApiService {
   }
 
   /// Pobierz listę kierowców (aktywnych pracowników) z systemu ERP.
-  static Future<List<Map<String, dynamic>>> getDrivers({String search = ''}) async {
+  static Future<List<Map<String, dynamic>>> getDrivers(
+      {String search = ''}) async {
     try {
       var url = '$_endpoint?drivers=1';
       if (search.isNotEmpty) {
         url += '&search=${Uri.encodeComponent(search)}';
       }
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      final response =
+          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -243,6 +257,79 @@ class ApiService {
       return false;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Ustaw lokalizację produktu (regał + półka). Aby wyczyścić — przekaż null/null.
+  ///
+  /// Rzuca [ApiException] dla błędów walidacji/biznesowych (4xx)
+  /// oraz [NetworkException] dla błędów sieci/timeoutu/5xx.
+  static Future<void> setProductLocation({
+    required String barcode,
+    required String? rack,
+    required int? shelf,
+  }) async {
+    try {
+      final response = await http
+          .put(
+            Uri.parse(_endpoint),
+            headers: {'Content-Type': 'application/json; charset=utf-8'},
+            body: jsonEncode({
+              'action': 'set_location',
+              'barcode': barcode,
+              'location_rack': rack,
+              'location_shelf': shelf,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        if (data['success'] == true) return;
+        throw ApiException(data['error'] ?? tr('ERROR_UNKNOWN'));
+      }
+      if (response.statusCode >= 400 && response.statusCode < 500) {
+        throw ApiException(data['error'] ?? tr('ERROR_UNKNOWN'));
+      }
+      throw NetworkException(
+        tr('ERROR_SERVER_STATUS', args: {'code': '${response.statusCode}'}),
+      );
+    } on http.ClientException {
+      throw NetworkException(tr('ERROR_NO_CONNECTION'));
+    } on FormatException {
+      throw ApiException(tr('ERROR_INVALID_RESPONSE'));
+    }
+  }
+
+  /// Pobierz lokalizację produktu po kodzie (funkcja "lupa").
+  ///
+  /// Zwraca mapę `{barcode, product_name, unit, location_rack, location_shelf}`
+  /// gdy produkt istnieje (lokalizacja może być null), lub `null` gdy nie istnieje.
+  /// Rzuca [NetworkException] przy braku łączności.
+  static Future<Map<String, dynamic>?> getProductLocation(
+      String barcode) async {
+    try {
+      final uri =
+          Uri.parse('$_endpoint?location=${Uri.encodeComponent(barcode)}');
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (data['success'] == true) {
+          if (data['exists'] == true && data['product'] != null) {
+            return Map<String, dynamic>.from(data['product'] as Map);
+          }
+          return null;
+        }
+      }
+      throw NetworkException(
+        tr('ERROR_SERVER_STATUS', args: {'code': '${response.statusCode}'}),
+      );
+    } on http.ClientException {
+      throw NetworkException(tr('ERROR_NO_CONNECTION'));
+    } on FormatException {
+      throw ApiException(tr('ERROR_INVALID_RESPONSE'));
     }
   }
 }

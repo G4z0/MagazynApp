@@ -142,7 +142,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                     child: const Icon(Icons.cloud_upload),
                   ),
                   onPressed: () => _showQueueSheet(),
-                  tooltip: tr('SCANNER_QUEUE_TOOLTIP', args: {'count': '$count'}),
+                  tooltip:
+                      tr('SCANNER_QUEUE_TOOLTIP', args: {'count': '$count'}),
                 ),
               );
             },
@@ -197,7 +198,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   height: scanAreaHeight,
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: _detectedCode != null ? Colors.greenAccent : Colors.white,
+                      color: _detectedCode != null
+                          ? Colors.greenAccent
+                          : Colors.white,
                       width: _detectedCode != null ? 3 : 2,
                     ),
                     borderRadius: BorderRadius.circular(12),
@@ -274,7 +277,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                                   label: Text(tr('BUTTON_REJECT')),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.red,
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14),
                                   ),
                                 ),
                               ),
@@ -288,7 +292,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                                       style: TextStyle(fontSize: 16)),
                                   style: FilledButton.styleFrom(
                                     backgroundColor: Colors.green.shade700,
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14),
                                   ),
                                 ),
                               ),
@@ -318,7 +323,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                         ),
                         child: Text(
                           tr('SCANNER_INSTRUCTION'),
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 14),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -505,8 +511,12 @@ class _QueueListSheetState extends State<_QueueListSheet> {
 
   String _formatUnit(String unit) {
     const labels = {
-      'szt': 'szt', 'opak': 'opak', 'l': 'l',
-      'kg': 'kg', 'm': 'm', 'kpl': 'kpl',
+      'szt': 'szt',
+      'opak': 'opak',
+      'l': 'l',
+      'kg': 'kg',
+      'm': 'm',
+      'kpl': 'kpl',
     };
     return labels[unit] ?? unit;
   }
@@ -542,11 +552,13 @@ class _QueueListSheetState extends State<_QueueListSheet> {
                   onPressed: _isSyncing ? null : _syncAll,
                   icon: _isSyncing
                       ? const SizedBox(
-                          width: 16, height: 16,
+                          width: 16,
+                          height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.sync, size: 18),
-                  label: Text(_isSyncing ? tr('BUTTON_SENDING') : tr('BUTTON_SEND')),
+                  label: Text(
+                      _isSyncing ? tr('BUTTON_SENDING') : tr('BUTTON_SEND')),
                 ),
             ],
           ),
@@ -578,7 +590,8 @@ class _QueueListSheetState extends State<_QueueListSheet> {
                         '${item['barcode']}  •  $qtyStr ${_formatUnit(item['unit'] as String)}',
                       ),
                       trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        icon:
+                            const Icon(Icons.delete_outline, color: Colors.red),
                         onPressed: () => _removeItem(item['id'] as int),
                       ),
                     );

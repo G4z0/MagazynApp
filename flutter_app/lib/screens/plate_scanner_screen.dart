@@ -45,11 +45,13 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
         (c) => c.lensDirection == CameraLensDirection.back,
         orElse: () => cameras.first,
       );
-      _camera = CameraController(back, ResolutionPreset.high, enableAudio: false);
+      _camera =
+          CameraController(back, ResolutionPreset.high, enableAudio: false);
       await _camera!.initialize();
       if (mounted) setState(() => _isInitialized = true);
     } catch (e) {
-      if (mounted) setState(() => _initError = tr('ERROR_CAMERA', args: {'error': '$e'}));
+      if (mounted)
+        setState(() => _initError = tr('ERROR_CAMERA', args: {'error': '$e'}));
     }
   }
 
@@ -94,7 +96,8 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
     final canvas = Canvas(recorder);
     canvas.drawImageRect(
       image,
-      Rect.fromLTWH(cropX.toDouble(), cropY.toDouble(), cropW.toDouble(), cropH.toDouble()),
+      Rect.fromLTWH(cropX.toDouble(), cropY.toDouble(), cropW.toDouble(),
+          cropH.toDouble()),
       Rect.fromLTWH(0, 0, cropW.toDouble(), cropH.toDouble()),
       Paint(),
     );
@@ -112,7 +115,8 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
   }
 
   Future<void> _captureAndRecognize() async {
-    if (_isProcessing || _camera == null || !_camera!.value.isInitialized) return;
+    if (_isProcessing || _camera == null || !_camera!.value.isInitialized)
+      return;
     setState(() => _isProcessing = true);
 
     try {
@@ -134,8 +138,13 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
         final candidates = <String>[];
         for (final block in result.blocks) {
           for (final line in block.lines) {
-            final text = line.text.trim().toUpperCase().replaceAll(RegExp(r'[^A-Z0-9\s]'), '');
-            if (text.length >= 5 && text.length <= 10 && _plateRegex.hasMatch(text)) {
+            final text = line.text
+                .trim()
+                .toUpperCase()
+                .replaceAll(RegExp(r'[^A-Z0-9\s]'), '');
+            if (text.length >= 5 &&
+                text.length <= 10 &&
+                _plateRegex.hasMatch(text)) {
               candidates.add(text.replaceAll(' ', ''));
             }
           }
@@ -144,7 +153,10 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
         // Dodaj też surowe linie >= 5 znaków jako fallback
         final allLines = result.blocks
             .expand((b) => b.lines)
-            .map((l) => l.text.trim().toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), ''))
+            .map((l) => l.text
+                .trim()
+                .toUpperCase()
+                .replaceAll(RegExp(r'[^A-Z0-9]'), ''))
             .where((t) => t.length >= 5 && t.length <= 10)
             .toSet()
             .toList();
@@ -187,41 +199,57 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2)),
             ),
-            Text(tr('PLATE_RESULTS_TITLE'), style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+            Text(tr('PLATE_RESULTS_TITLE'),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text(tr('PLATE_RESULTS_SUBTITLE'), style: const TextStyle(color: _secondaryText, fontSize: 13)),
+            Text(tr('PLATE_RESULTS_SUBTITLE'),
+                style: const TextStyle(color: _secondaryText, fontSize: 13)),
             const SizedBox(height: 16),
             ...plates.map((plate) => Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 8),
-              child: Material(
-                color: const Color(0xFF23262E),
-                borderRadius: BorderRadius.circular(12),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _searchPlate(plate);
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.directions_car, color: _accent, size: 22),
-                        const SizedBox(width: 12),
-                        Text(plate, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 2)),
-                        const Spacer(),
-                        const Icon(Icons.arrow_forward_ios, color: _secondaryText, size: 16),
-                      ],
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: Material(
+                    color: const Color(0xFF23262E),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _searchPlate(plate);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 14),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.directions_car,
+                                color: _accent, size: 22),
+                            const SizedBox(width: 12),
+                            Text(plate,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 2)),
+                            const Spacer(),
+                            const Icon(Icons.arrow_forward_ios,
+                                color: _secondaryText, size: 16),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            )),
+                )),
           ],
         ),
       ),
@@ -238,7 +266,8 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
           children: [
             const CircularProgressIndicator(color: _accent),
             const SizedBox(width: 20),
-            Text(tr('PLATE_SEARCHING'), style: const TextStyle(color: Colors.white)),
+            Text(tr('PLATE_SEARCHING'),
+                style: const TextStyle(color: Colors.white)),
           ],
         ),
       ),
@@ -273,7 +302,8 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: _cardBg,
         icon: const Icon(Icons.search_off, color: Colors.orange, size: 48),
-        title: Text(tr('PLATE_NOT_FOUND_TITLE'), style: const TextStyle(color: Colors.white)),
+        title: Text(tr('PLATE_NOT_FOUND_TITLE'),
+            style: const TextStyle(color: Colors.white)),
         content: Text(
           tr('PLATE_NOT_FOUND_CONTENT', args: {'plate': plate}),
           textAlign: TextAlign.center,
@@ -303,56 +333,72 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2)),
             ),
-            Text(tr('PLATE_VEHICLES_FOUND'), style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+            Text(tr('PLATE_VEHICLES_FOUND'),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             ...vehicles.map((v) => Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 8),
-              child: Material(
-                color: const Color(0xFF23262E),
-                borderRadius: BorderRadius.circular(12),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _openRepairForm(v);
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        Icon(
-                          v['object_type'] == 2 ? Icons.rv_hookup : Icons.local_shipping,
-                          color: _accent,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                v['plate'] ?? '',
-                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: Material(
+                    color: const Color(0xFF23262E),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _openRepairForm(v);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        child: Row(
+                          children: [
+                            Icon(
+                              v['object_type'] == 2
+                                  ? Icons.rv_hookup
+                                  : Icons.local_shipping,
+                              color: _accent,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    v['plate'] ?? '',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1),
+                                  ),
+                                  Text(
+                                    v['object_label'] ?? '',
+                                    style: const TextStyle(
+                                        color: _secondaryText, fontSize: 12),
+                                  ),
+                                ],
                               ),
-                              Text(
-                                v['object_label'] ?? '',
-                                style: const TextStyle(color: _secondaryText, fontSize: 12),
-                              ),
-                            ],
-                          ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios,
+                                color: _secondaryText, size: 16),
+                          ],
                         ),
-                        const Icon(Icons.arrow_forward_ios, color: _secondaryText, size: 16),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ),
-            )),
+                )),
           ],
         ),
       ),
@@ -374,12 +420,14 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: _cardBg,
-        title: Text(tr('DIALOG_ENTER_PLATE_TITLE'), style: const TextStyle(color: Colors.white)),
+        title: Text(tr('DIALOG_ENTER_PLATE_TITLE'),
+            style: const TextStyle(color: Colors.white)),
         content: TextField(
           controller: _manualController,
           autofocus: true,
           textCapitalization: TextCapitalization.characters,
-          style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 2),
+          style: const TextStyle(
+              color: Colors.white, fontSize: 18, letterSpacing: 2),
           decoration: InputDecoration(
             hintText: tr('DIALOG_ENTER_PLATE_HINT'),
             hintStyle: const TextStyle(color: _secondaryText),
@@ -393,14 +441,16 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
           onSubmitted: (v) {
             if (v.trim().length >= 4) {
               Navigator.pop(ctx);
-              _searchPlate(v.trim().toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), ''));
+              _searchPlate(
+                  v.trim().toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), ''));
             }
           },
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(tr('BUTTON_CANCEL'), style: const TextStyle(color: _secondaryText)),
+            child: Text(tr('BUTTON_CANCEL'),
+                style: const TextStyle(color: _secondaryText)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: _accent),
@@ -408,7 +458,8 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
               final v = _manualController.text.trim();
               if (v.length >= 4) {
                 Navigator.pop(ctx);
-                _searchPlate(v.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), ''));
+                _searchPlate(
+                    v.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), ''));
               }
             },
             child: Text(tr('BUTTON_SEARCH')),
@@ -463,7 +514,9 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
             children: [
               const Icon(Icons.error_outline, color: Colors.red, size: 48),
               const SizedBox(height: 16),
-              Text(_initError!, style: const TextStyle(color: Colors.white), textAlign: TextAlign.center),
+              Text(_initError!,
+                  style: const TextStyle(color: Colors.white),
+                  textAlign: TextAlign.center),
             ],
           ),
         ),
@@ -477,7 +530,8 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
           children: [
             const CircularProgressIndicator(color: Colors.white),
             const SizedBox(height: 16),
-            Text(tr('CAMERA_STARTING'), style: const TextStyle(color: Colors.white70)),
+            Text(tr('CAMERA_STARTING'),
+                style: const TextStyle(color: Colors.white70)),
           ],
         ),
       );
@@ -500,13 +554,15 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
             // Overlay with plate-shaped cutout
             CustomPaint(
               size: Size(constraints.maxWidth, constraints.maxHeight),
-              painter: _PlateOverlayPainter(scanWidth: scanW, scanHeight: scanH),
+              painter:
+                  _PlateOverlayPainter(scanWidth: scanW, scanHeight: scanH),
             ),
 
             // Text hint
             Positioned(
               top: (constraints.maxHeight - scanH) / 2 - 40,
-              left: 0, right: 0,
+              left: 0,
+              right: 0,
               child: Text(
                 tr('PLATE_INSTRUCTION'),
                 textAlign: TextAlign.center,
@@ -516,7 +572,9 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
 
             // Bottom controls
             Positioned(
-              bottom: 0, left: 0, right: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
               child: Container(
                 padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
                 decoration: BoxDecoration(
@@ -533,19 +591,22 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
                     GestureDetector(
                       onTap: _showManualEntry,
                       child: Container(
-                        width: 56, height: 56,
+                        width: 56,
+                        height: 56,
                         decoration: BoxDecoration(
                           color: Colors.white.withAlpha(25),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.keyboard, color: Colors.white, size: 24),
+                        child: const Icon(Icons.keyboard,
+                            color: Colors.white, size: 24),
                       ),
                     ),
                     // Capture button
                     GestureDetector(
                       onTap: _isProcessing ? null : _captureAndRecognize,
                       child: Container(
-                        width: 72, height: 72,
+                        width: 72,
+                        height: 72,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 4),
@@ -554,9 +615,11 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
                         child: _isProcessing
                             ? const Padding(
                                 padding: EdgeInsets.all(18),
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 3),
                               )
-                            : const Icon(Icons.camera_alt, color: Colors.white, size: 32),
+                            : const Icon(Icons.camera_alt,
+                                color: Colors.white, size: 32),
                       ),
                     ),
                     // Spacer for symmetry
@@ -582,7 +645,8 @@ class _PlateOverlayPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final rect = Rect.fromCenter(center: center, width: scanWidth, height: scanHeight);
+    final rect =
+        Rect.fromCenter(center: center, width: scanWidth, height: scanHeight);
     final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(8));
 
     // Dark overlay
@@ -593,10 +657,12 @@ class _PlateOverlayPainter extends CustomPainter {
     canvas.drawPath(path, Paint()..color = Colors.black.withAlpha(140));
 
     // Border
-    canvas.drawRRect(rrect, Paint()
-      ..style = PaintingStyle.stroke
-      ..color = const Color(0xFF3498DB)
-      ..strokeWidth = 2.5);
+    canvas.drawRRect(
+        rrect,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..color = const Color(0xFF3498DB)
+          ..strokeWidth = 2.5);
 
     // Corners
     const cornerLen = 20.0;
@@ -607,17 +673,25 @@ class _PlateOverlayPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     // Top-left
-    canvas.drawLine(Offset(rect.left, rect.top + cornerLen), rect.topLeft, paint);
-    canvas.drawLine(rect.topLeft, Offset(rect.left + cornerLen, rect.top), paint);
+    canvas.drawLine(
+        Offset(rect.left, rect.top + cornerLen), rect.topLeft, paint);
+    canvas.drawLine(
+        rect.topLeft, Offset(rect.left + cornerLen, rect.top), paint);
     // Top-right
-    canvas.drawLine(Offset(rect.right - cornerLen, rect.top), rect.topRight, paint);
-    canvas.drawLine(rect.topRight, Offset(rect.right, rect.top + cornerLen), paint);
+    canvas.drawLine(
+        Offset(rect.right - cornerLen, rect.top), rect.topRight, paint);
+    canvas.drawLine(
+        rect.topRight, Offset(rect.right, rect.top + cornerLen), paint);
     // Bottom-left
-    canvas.drawLine(Offset(rect.left, rect.bottom - cornerLen), rect.bottomLeft, paint);
-    canvas.drawLine(rect.bottomLeft, Offset(rect.left + cornerLen, rect.bottom), paint);
+    canvas.drawLine(
+        Offset(rect.left, rect.bottom - cornerLen), rect.bottomLeft, paint);
+    canvas.drawLine(
+        rect.bottomLeft, Offset(rect.left + cornerLen, rect.bottom), paint);
     // Bottom-right
-    canvas.drawLine(Offset(rect.right - cornerLen, rect.bottom), rect.bottomRight, paint);
-    canvas.drawLine(rect.bottomRight, Offset(rect.right, rect.bottom - cornerLen), paint);
+    canvas.drawLine(
+        Offset(rect.right - cornerLen, rect.bottom), rect.bottomRight, paint);
+    canvas.drawLine(
+        rect.bottomRight, Offset(rect.right, rect.bottom - cornerLen), paint);
   }
 
   @override

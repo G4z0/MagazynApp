@@ -51,7 +51,8 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
       await _camera!.initialize();
       if (mounted) setState(() => _isInitialized = true);
     } catch (e) {
-      if (mounted) setState(() => _initError = tr('ERROR_CAMERA', args: {'error': '$e'}));
+      if (mounted)
+        setState(() => _initError = tr('ERROR_CAMERA', args: {'error': '$e'}));
     }
   }
 
@@ -93,8 +94,8 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
     final canvas = Canvas(recorder);
     canvas.drawImageRect(
       image,
-      Rect.fromLTWH(cropX.toDouble(), cropY.toDouble(),
-          cropW.toDouble(), cropH.toDouble()),
+      Rect.fromLTWH(cropX.toDouble(), cropY.toDouble(), cropW.toDouble(),
+          cropH.toDouble()),
       Rect.fromLTWH(0, 0, cropW.toDouble(), cropH.toDouble()),
       Paint(),
     );
@@ -347,8 +348,7 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
                         max: 1.0,
                         activeColor: Colors.white,
                         inactiveColor: Colors.white30,
-                        onChanged: (v) =>
-                            setState(() => _scanSizeFactor = v),
+                        onChanged: (v) => setState(() => _scanSizeFactor = v),
                       ),
                     ),
                     const Icon(Icons.photo_size_select_large,
@@ -497,7 +497,8 @@ class _OcrResultsSheetState extends State<_OcrResultsSheet> {
                 Icon(Icons.text_fields, color: Colors.blue.shade700),
                 const SizedBox(width: 8),
                 Text(
-                  tr('OCR_RESULTS_TITLE', args: {'count': '${_controllers.length}'}),
+                  tr('OCR_RESULTS_TITLE',
+                      args: {'count': '${_controllers.length}'}),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ],

@@ -111,3 +111,39 @@ ALTER TABLE `stock_movements` ADD COLUMN `vehicle_plate` VARCHAR(20) DEFAULT NUL
 ALTER TABLE `stock_movements` ADD COLUMN `issue_target` VARCHAR(20) DEFAULT NULL AFTER `vehicle_plate`;
 ALTER TABLE `stock_movements` ADD COLUMN `driver_id` INT DEFAULT NULL AFTER `issue_target`;
 ALTER TABLE `stock_movements` ADD COLUMN `driver_name` VARCHAR(100) DEFAULT NULL AFTER `driver_id`;
+
+-- =============================================================
+-- 8. Tabela stock_products — słownik produktów + lokalizacja w magazynie
+--    Regał: 1-2 wielkie litery (A..ZZ). Półka: 0 (podłoga) .. 99.
+--    Slot identyfikowany jako "A0", "C3", "AB12" itd.
+-- =============================================================
+CREATE TABLE IF NOT EXISTS `stock_products` (
+    `barcode`        VARCHAR(128) NOT NULL,
+    `code_type`      ENUM('barcode','product_code') NOT NULL DEFAULT 'barcode',
+    `product_name`   VARCHAR(255) NOT NULL,
+    `unit`           VARCHAR(20) NOT NULL DEFAULT 'szt',
+    `location_rack`  VARCHAR(2) DEFAULT NULL,
+    `location_shelf` TINYINT UNSIGNED DEFAULT NULL,
+    `created_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`barcode`),
+    KEY `idx_product_name` (`product_name`),
+    KEY `idx_location` (`location_rack`, `location_shelf`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Backfill istniejących produktów z stock_movements (bez lokalizacji — NULL).
+-- Bierzemy najnowszą nazwę/jednostkę/typ kodu dla każdego barcode.
+INSERT IGNORE INTO `stock_products` (`barcode`, `code_type`, `product_name`, `unit`, `created_at`)
+SELECT
+    sm.barcode,
+    sm.code_type,
+    sm.product_name,
+    sm.unit,
+    MIN(sm.created_at)
+FROM `stock_movements` sm
+INNER JOIN (
+    SELECT barcode, MAX(id) AS max_id
+    FROM `stock_movements`
+    GROUP BY barcode
+) latest ON latest.max_id = sm.id
+GROUP BY sm.barcode, sm.code_type, sm.product_name, sm.unit;

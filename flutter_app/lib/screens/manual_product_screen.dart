@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../l10n/translations.dart';
 import '../models/code_type.dart';
 import '../services/api_service.dart';
@@ -20,6 +21,8 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
   final _nameController = TextEditingController();
   final _quantityController = TextEditingController(text: '1');
   final _noteController = TextEditingController();
+  final _rackController = TextEditingController();
+  final _shelfController = TextEditingController();
 
   bool _isSaving = false;
   bool _isLoadingCode = true;
@@ -52,6 +55,8 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
     _nameController.dispose();
     _quantityController.dispose();
     _noteController.dispose();
+    _rackController.dispose();
+    _shelfController.dispose();
     super.dispose();
   }
 
@@ -83,6 +88,13 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
         ? _noteController.text.trim()
         : null;
 
+    // Lokalizacja (opcjonalna). Walidacja w validatorach formularza.
+    final rackText = _rackController.text.trim().toUpperCase();
+    final shelfText = _shelfController.text.trim();
+    final String? locationRack = rackText.isEmpty ? null : rackText;
+    final int? locationShelf =
+        shelfText.isEmpty ? null : int.tryParse(shelfText);
+
     try {
       final result = await ApiService.saveProduct(
         barcode: barcode,
@@ -92,13 +104,16 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
         codeType: CodeType.productCode,
         movementType: _movementType,
         note: note,
+        locationRack: locationRack,
+        locationShelf: locationShelf,
       );
 
       if (!mounted) return;
 
       final message = result['message'] ?? 'Zapisano';
 
-      final label = _movementType == 'in' ? tr('LOG_STOCK_IN') : tr('LOG_STOCK_OUT');
+      final label =
+          _movementType == 'in' ? tr('LOG_STOCK_IN') : tr('LOG_STOCK_OUT');
       await LocalHistoryService().add(
         actionType: _movementType == 'in' ? 'stock_in' : 'stock_out',
         title: '$label: $productName',
@@ -119,9 +134,12 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
         codeType: CodeType.productCode,
         movementType: _movementType,
         note: note,
+        locationRack: locationRack,
+        locationShelf: locationShelf,
       );
 
-      final label = _movementType == 'in' ? tr('LOG_STOCK_IN') : tr('LOG_STOCK_OUT');
+      final label =
+          _movementType == 'in' ? tr('LOG_STOCK_IN') : tr('LOG_STOCK_OUT');
       await LocalHistoryService().add(
         actionType: _movementType == 'in' ? 'stock_in' : 'stock_out',
         title: '$label (offline): $productName',
@@ -152,9 +170,12 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
         codeType: CodeType.productCode,
         movementType: _movementType,
         note: note,
+        locationRack: locationRack,
+        locationShelf: locationShelf,
       );
 
-      final label = _movementType == 'in' ? tr('LOG_STOCK_IN') : tr('LOG_STOCK_OUT');
+      final label =
+          _movementType == 'in' ? tr('LOG_STOCK_IN') : tr('LOG_STOCK_OUT');
       await LocalHistoryService().add(
         actionType: _movementType == 'in' ? 'stock_in' : 'stock_out',
         title: '$label (offline): $productName',
@@ -292,8 +313,8 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                       const SizedBox(
                         width: 24,
                         height: 24,
-                        child:
-                            CircularProgressIndicator(strokeWidth: 2, color: _accent),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: _accent),
                       )
                     else
                       SelectableText(
@@ -309,7 +330,8 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                     const SizedBox(height: 8),
                     Text(
                       tr('MANUAL_CODE_INFO'),
-                      style: const TextStyle(fontSize: 12, color: Colors.white38),
+                      style:
+                          const TextStyle(fontSize: 12, color: Colors.white38),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -357,8 +379,8 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                     flex: 2,
                     child: TextFormField(
                       controller: _quantityController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         labelText: tr('LABEL_QUANTITY'),
@@ -408,7 +430,8 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                               ))
                           .toList(),
                       onChanged: (value) {
-                        if (value != null) setState(() => _selectedUnit = value);
+                        if (value != null)
+                          setState(() => _selectedUnit = value);
                       },
                     ),
                   ),
@@ -437,6 +460,94 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                 maxLength: 255,
               ),
 
+              const SizedBox(height: 8),
+
+              // Lokalizacja w magazynie (opcjonalna): regał + półka
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: TextFormField(
+                      controller: _rackController,
+                      textCapitalization: TextCapitalization.characters,
+                      style: const TextStyle(
+                          color: Colors.white, letterSpacing: 2),
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(2),
+                        FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
+                        TextInputFormatter.withFunction((oldValue, newValue) {
+                          return newValue.copyWith(
+                              text: newValue.text.toUpperCase());
+                        }),
+                      ],
+                      decoration: InputDecoration(
+                        labelText: tr('LOCATION_RACK'),
+                        labelStyle: const TextStyle(color: Colors.white54),
+                        hintText: tr('LOCATION_HINT_RACK'),
+                        hintStyle: const TextStyle(color: Colors.white24),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none),
+                        prefixIcon: const Icon(Icons.shelves, color: _accent),
+                        filled: true,
+                        fillColor: _inputBg,
+                      ),
+                      validator: (value) {
+                        final rack = (value ?? '').trim();
+                        final shelf = _shelfController.text.trim();
+                        if (rack.isEmpty && shelf.isEmpty) return null;
+                        if (rack.isEmpty) {
+                          return tr('LOCATION_VALIDATION_BOTH_REQUIRED');
+                        }
+                        if (!RegExp(r'^[A-Z]{1,2}$').hasMatch(rack)) {
+                          return tr('LOCATION_VALIDATION_RACK');
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: TextFormField(
+                      controller: _shelfController,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Colors.white),
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(2),
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
+                      decoration: InputDecoration(
+                        labelText: tr('LOCATION_SHELF'),
+                        labelStyle: const TextStyle(color: Colors.white54),
+                        hintText: tr('LOCATION_HINT_SHELF'),
+                        hintStyle: const TextStyle(color: Colors.white24),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none),
+                        prefixIcon: const Icon(Icons.layers, color: _accent),
+                        filled: true,
+                        fillColor: _inputBg,
+                      ),
+                      validator: (value) {
+                        final shelf = (value ?? '').trim();
+                        final rack = _rackController.text.trim();
+                        if (rack.isEmpty && shelf.isEmpty) return null;
+                        if (shelf.isEmpty) {
+                          return tr('LOCATION_VALIDATION_BOTH_REQUIRED');
+                        }
+                        final n = int.tryParse(shelf);
+                        if (n == null || n < 0 || n > 99) {
+                          return tr('LOCATION_VALIDATION_SHELF');
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 20),
 
               // Przycisk zapisz
@@ -449,13 +560,9 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white),
                       )
-                    : Icon(
-                        Icons.add_circle,
-                        color: Colors.white),
+                    : Icon(Icons.add_circle, color: Colors.white),
                 label: Text(
-                  _isSaving
-                      ? tr('BUTTON_SAVING')
-                      : tr('BUTTON_RECEIVE_GOODS'),
+                  _isSaving ? tr('BUTTON_SAVING') : tr('BUTTON_RECEIVE_GOODS'),
                   style: const TextStyle(
                       fontSize: 18,
                       color: Colors.white,

@@ -88,7 +88,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: _accent,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Icon(Icons.warehouse, color: Colors.white, size: 40),
+                    child: const Icon(Icons.warehouse,
+                        color: Colors.white, size: 40),
                   ),
                   const SizedBox(height: 24),
                   Text(
@@ -118,12 +119,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                          const Icon(Icons.error_outline,
+                              color: Colors.red, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: const TextStyle(color: Colors.red, fontSize: 13),
+                              style: const TextStyle(
+                                  color: Colors.red, fontSize: 13),
                             ),
                           ),
                         ],
@@ -141,7 +144,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: InputDecoration(
                       labelText: tr('LABEL_EMAIL'),
                       labelStyle: const TextStyle(color: _secondaryText),
-                      prefixIcon: const Icon(Icons.email_outlined, color: _accent),
+                      prefixIcon:
+                          const Icon(Icons.email_outlined, color: _accent),
                       filled: true,
                       fillColor: _inputBg,
                       border: OutlineInputBorder(
@@ -150,12 +154,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: _accent, width: 1.5),
+                        borderSide:
+                            const BorderSide(color: _accent, width: 1.5),
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return tr('VALIDATION_EMAIL_REQUIRED');
-                      if (!v.contains('@')) return tr('VALIDATION_EMAIL_INVALID');
+                      if (v == null || v.trim().isEmpty)
+                        return tr('VALIDATION_EMAIL_REQUIRED');
+                      if (!v.contains('@'))
+                        return tr('VALIDATION_EMAIL_INVALID');
                       return null;
                     },
                     textInputAction: TextInputAction.next,
@@ -170,13 +177,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: InputDecoration(
                       labelText: tr('LABEL_PASSWORD'),
                       labelStyle: const TextStyle(color: _secondaryText),
-                      prefixIcon: const Icon(Icons.lock_outlined, color: _accent),
+                      prefixIcon:
+                          const Icon(Icons.lock_outlined, color: _accent),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                           color: _secondaryText,
                         ),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword),
                       ),
                       filled: true,
                       fillColor: _inputBg,
@@ -186,11 +197,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: _accent, width: 1.5),
+                        borderSide:
+                            const BorderSide(color: _accent, width: 1.5),
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return tr('VALIDATION_PASSWORD_REQUIRED');
+                      if (v == null || v.isEmpty)
+                        return tr('VALIDATION_PASSWORD_REQUIRED');
                       return null;
                     },
                     onFieldSubmitted: (_) => _login(),
@@ -222,7 +235,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             )
                           : Text(
                               tr('BUTTON_SIGN_IN'),
-                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 17, fontWeight: FontWeight.bold),
                             ),
                     ),
                   ),

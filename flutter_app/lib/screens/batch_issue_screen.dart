@@ -15,6 +15,7 @@ class _IssueItem {
   String unit;
   CodeType codeType;
   String? note;
+  String? location;
   bool isLoading;
   bool isIssued;
   String? error;
@@ -26,6 +27,7 @@ class _IssueItem {
     this.unit = 'szt',
     required this.codeType,
     this.note,
+    this.location,
     this.isLoading = false,
     this.isIssued = false,
     this.error,
@@ -96,9 +98,114 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
         builder: (_) => const ScannerScreen(returnBarcodeOnly: true),
       ),
     );
-    if (barcode != null && barcode.isNotEmpty && mounted) {
-      _addItemByBarcode(barcode);
-    }
+    if (barcode == null || barcode.isEmpty || !mounted) return;
+
+    // Zapytaj o ilość przed dodaniem do listy.
+    final qty = await _promptScanQuantity(barcode);
+    if (qty == null || qty <= 0 || !mounted) return;
+
+    _addItemByBarcode(barcode, quantity: qty);
+  }
+
+  /// Dialog wyboru ilości tuż po skanowaniu (- / + / wpis ręczny).
+  Future<double?> _promptScanQuantity(String barcode) async {
+    double qty = 1;
+    final controller = TextEditingController(text: '1');
+    final result = await showDialog<double>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateDialog) {
+          void setQty(double v) {
+            if (v < 1) v = 1;
+            qty = v;
+            controller.text = _formatQty(v);
+            controller.selection = TextSelection.fromPosition(
+                TextPosition(offset: controller.text.length));
+            setStateDialog(() {});
+          }
+
+          return AlertDialog(
+            backgroundColor: _cardBg,
+            title: Text(tr('BATCH_QTY_DIALOG_TITLE'),
+                style: const TextStyle(color: Colors.white)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(barcode,
+                    style: const TextStyle(
+                        color: Colors.white60,
+                        fontFamily: 'monospace',
+                        fontSize: 13)),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton.filledTonal(
+                      onPressed: () => setQty(qty - 1),
+                      icon: const Icon(Icons.remove),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 90,
+                      child: TextField(
+                        controller: controller,
+                        autofocus: true,
+                        textAlign: TextAlign.center,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: _inputBg,
+                          hintText: tr('BATCH_QTY_DIALOG_HINT'),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 12),
+                        ),
+                        onChanged: (v) {
+                          final parsed =
+                              double.tryParse(v.replaceAll(',', '.'));
+                          if (parsed != null && parsed > 0) qty = parsed;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    IconButton.filledTonal(
+                      onPressed: () => setQty(qty + 1),
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(tr('BUTTON_CANCEL')),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: _accent),
+                onPressed: () {
+                  final parsed =
+                      double.tryParse(controller.text.replaceAll(',', '.'));
+                  Navigator.pop(
+                      ctx, (parsed != null && parsed > 0) ? parsed : qty);
+                },
+                child: Text(tr('BUTTON_ADD')),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    controller.dispose();
+    return result;
   }
 
   /// Pokaż bottom sheet z listą produktów do wyboru.
@@ -108,22 +215,31 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _ProductPickerSheet(
-        onSelected: (barcode, productName, unit, stock) {
-          // Sprawdź duplikat
-          final existing = _items.where((i) => i.barcode == barcode && i.unit == unit && !i.isIssued).toList();
-          if (existing.isNotEmpty) {
-            setState(() => existing.first.quantity += 1);
+        onSelected: (barcode, productName, unit, stock, location) {
+          // Sprawdź duplikat — przy trafieniu zwiększ ilość i przesuń na górę.
+          final existingIndex = _items.indexWhere(
+              (i) => i.barcode == barcode && i.unit == unit && !i.isIssued);
+          if (existingIndex != -1) {
+            setState(() {
+              final existing = _items.removeAt(existingIndex);
+              existing.quantity += 1;
+              _items.insert(0, existing);
+            });
             _showSnackBar(tr('BATCH_ITEM_QTY_INCREASED'));
             return;
           }
           setState(() {
-            _items.add(_IssueItem(
-              barcode: barcode,
-              productName: productName,
-              quantity: 1,
-              unit: unit,
-              codeType: CodeType.detect(barcode),
-            ));
+            _items.insert(
+              0,
+              _IssueItem(
+                barcode: barcode,
+                productName: productName,
+                quantity: 1,
+                unit: unit,
+                codeType: CodeType.detect(barcode),
+                location: location,
+              ),
+            );
           });
         },
       ),
@@ -131,12 +247,16 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
   }
 
   /// Dodaj pozycję na podstawie kodu i pobierz dane z API.
-  Future<void> _addItemByBarcode(String barcode) async {
-    // Sprawdź czy ten kod już jest na liście
-    final existing = _items.where((i) => i.barcode == barcode && !i.isIssued).toList();
-    if (existing.isNotEmpty) {
-      // Zwiększ ilość zamiast dodawać duplikat
-      setState(() => existing.first.quantity += 1);
+  Future<void> _addItemByBarcode(String barcode, {double quantity = 1}) async {
+    // Sprawdź czy ten kod już jest na liście — zwiększ ilość i przesuń na górę.
+    final existingIndex =
+        _items.indexWhere((i) => i.barcode == barcode && !i.isIssued);
+    if (existingIndex != -1) {
+      setState(() {
+        final existing = _items.removeAt(existingIndex);
+        existing.quantity += quantity;
+        _items.insert(0, existing);
+      });
       _showSnackBar(tr('BATCH_ITEM_QTY_INCREASED'));
       return;
     }
@@ -145,9 +265,10 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
     final item = _IssueItem(
       barcode: barcode,
       codeType: codeType,
+      quantity: quantity,
       isLoading: true,
     );
-    setState(() => _items.add(item));
+    setState(() => _items.insert(0, item));
 
     // Pobierz dane z API
     try {
@@ -162,11 +283,18 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
             if (data['code_type'] != null) {
               item.codeType = CodeType.fromApi(data['code_type'] as String);
             }
+            // Lokalizacja w magazynie (regał + półka).
+            final rack = (data['location_rack'] as String?)?.trim();
+            final shelf = data['location_shelf'];
+            if (rack != null && rack.isNotEmpty && shelf != null) {
+              item.location = '$rack$shelf';
+            }
           }
           // Ustaw jednostkę z pierwszego stanu magazynowego
           if (result['stock'] != null) {
             final stockList = List<Map<String, dynamic>>.from(
-              (result['stock'] as List).map((e) => Map<String, dynamic>.from(e as Map)),
+              (result['stock'] as List)
+                  .map((e) => Map<String, dynamic>.from(e as Map)),
             );
             if (stockList.isNotEmpty) {
               item.unit = stockList.first['unit'] as String? ?? 'szt';
@@ -189,7 +317,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
   /// Wydaj wszystkie pozycje z listy.
   Future<void> _submitAll() async {
     // Walidacja wspólnych pól
-    if (_issueTarget == 'vehicle' && _vehiclePlateController.text.trim().isEmpty) {
+    if (_issueTarget == 'vehicle' &&
+        _vehiclePlateController.text.trim().isEmpty) {
       _showSnackBar(tr('VALIDATION_VEHICLE_REQUIRED'));
       return;
     }
@@ -229,7 +358,9 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
           movementType: 'out',
           note: item.note,
           issueReason: _issueReason,
-          vehiclePlate: _issueTarget == 'vehicle' ? _vehiclePlateController.text.trim() : null,
+          vehiclePlate: _issueTarget == 'vehicle'
+              ? _vehiclePlateController.text.trim()
+              : null,
           issueTarget: _issueTarget,
           driverId: _issueTarget == 'driver' ? _selectedDriverId : null,
           driverName: _issueTarget == 'driver' ? _selectedDriverName : null,
@@ -238,7 +369,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
         await LocalHistoryService().add(
           actionType: 'stock_out',
           title: '${tr('LOG_STOCK_OUT')}: ${item.productName}',
-          subtitle: '${_formatQty(item.quantity)} ${item.unit} — ${item.barcode}',
+          subtitle:
+              '${_formatQty(item.quantity)} ${item.unit} — ${item.barcode}',
           barcode: item.barcode,
           quantity: item.quantity,
           unit: item.unit,
@@ -262,7 +394,9 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
           movementType: 'out',
           note: item.note,
           issueReason: _issueReason,
-          vehiclePlate: _issueTarget == 'vehicle' ? _vehiclePlateController.text.trim() : null,
+          vehiclePlate: _issueTarget == 'vehicle'
+              ? _vehiclePlateController.text.trim()
+              : null,
           issueTarget: _issueTarget,
           driverId: _issueTarget == 'driver' ? _selectedDriverId : null,
           driverName: _issueTarget == 'driver' ? _selectedDriverName : null,
@@ -271,7 +405,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
         await LocalHistoryService().add(
           actionType: 'stock_out',
           title: '${tr('LOG_STOCK_OUT')} (offline): ${item.productName}',
-          subtitle: '${_formatQty(item.quantity)} ${item.unit} — ${item.barcode}',
+          subtitle:
+              '${_formatQty(item.quantity)} ${item.unit} — ${item.barcode}',
           barcode: item.barcode,
           quantity: item.quantity,
           unit: item.unit,
@@ -300,7 +435,9 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
           movementType: 'out',
           note: item.note,
           issueReason: _issueReason,
-          vehiclePlate: _issueTarget == 'vehicle' ? _vehiclePlateController.text.trim() : null,
+          vehiclePlate: _issueTarget == 'vehicle'
+              ? _vehiclePlateController.text.trim()
+              : null,
           issueTarget: _issueTarget,
           driverId: _issueTarget == 'driver' ? _selectedDriverId : null,
           driverName: _issueTarget == 'driver' ? _selectedDriverName : null,
@@ -309,7 +446,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
         await LocalHistoryService().add(
           actionType: 'stock_out',
           title: '${tr('LOG_STOCK_OUT')} (offline): ${item.productName}',
-          subtitle: '${_formatQty(item.quantity)} ${item.unit} — ${item.barcode}',
+          subtitle:
+              '${_formatQty(item.quantity)} ${item.unit} — ${item.barcode}',
           barcode: item.barcode,
           quantity: item.quantity,
           unit: item.unit,
@@ -348,24 +486,28 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
           style: const TextStyle(color: Colors.white),
         ),
         content: Text(
-          tr('BATCH_RESULT_MESSAGE', args: {'success': '$success', 'fail': '$fail'}),
+          tr('BATCH_RESULT_MESSAGE',
+              args: {'success': '$success', 'fail': '$fail'}),
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           if (fail > 0)
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text(tr('BUTTON_RETRY'), style: const TextStyle(color: Colors.white54)),
+              child: Text(tr('BUTTON_RETRY'),
+                  style: const TextStyle(color: Colors.white54)),
             ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _accent, foregroundColor: Colors.white),
+            style: FilledButton.styleFrom(
+                backgroundColor: _accent, foregroundColor: Colors.white),
             onPressed: () {
               Navigator.pop(ctx);
               if (fail == 0) {
                 Navigator.pop(context);
               }
             },
-            child: Text(fail == 0 ? tr('BUTTON_CONFIRM') : tr('BUTTON_CONFIRM')),
+            child:
+                Text(fail == 0 ? tr('BUTTON_CONFIRM') : tr('BUTTON_CONFIRM')),
           ),
         ],
       ),
@@ -430,7 +572,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
               child: Chip(
                 label: Text(
                   '$pendingCount',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
                 ),
                 backgroundColor: Colors.orange.shade800,
                 side: BorderSide.none,
@@ -459,7 +602,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.settings, color: Colors.orange.shade400, size: 20),
+                            Icon(Icons.settings,
+                                color: Colors.orange.shade400, size: 20),
                             const SizedBox(width: 8),
                             Text(
                               tr('BATCH_COMMON_SETTINGS'),
@@ -476,7 +620,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                         // Powód wydania
                         Text(
                           tr('LABEL_ISSUE_REASON'),
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 13),
                         ),
                         const SizedBox(height: 8),
                         SizedBox(
@@ -486,12 +631,15 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                             segments: [
                               ButtonSegment(
                                 value: 'departure',
-                                label: Text(tr('ISSUE_DEPARTURE'), style: const TextStyle(fontSize: 12)),
-                                icon: const Icon(Icons.departure_board, size: 18),
+                                label: Text(tr('ISSUE_DEPARTURE'),
+                                    style: const TextStyle(fontSize: 12)),
+                                icon:
+                                    const Icon(Icons.departure_board, size: 18),
                               ),
                               ButtonSegment(
                                 value: 'replacement',
-                                label: Text(tr('ISSUE_REPLACEMENT'), style: const TextStyle(fontSize: 12)),
+                                label: Text(tr('ISSUE_REPLACEMENT'),
+                                    style: const TextStyle(fontSize: 12)),
                                 icon: const Icon(Icons.swap_horiz, size: 18),
                               ),
                             ],
@@ -500,14 +648,17 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                               setState(() => _issueReason = value.first);
                             },
                             style: ButtonStyle(
-                              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                              backgroundColor:
+                                  WidgetStateProperty.resolveWith((states) {
                                 if (states.contains(WidgetState.selected)) {
                                   return Colors.orange.shade800.withAlpha(180);
                                 }
                                 return _inputBg;
                               }),
-                              foregroundColor: WidgetStateProperty.all(Colors.white),
-                              side: WidgetStateProperty.all(BorderSide(color: Colors.white.withAlpha(30))),
+                              foregroundColor:
+                                  WidgetStateProperty.all(Colors.white),
+                              side: WidgetStateProperty.all(BorderSide(
+                                  color: Colors.white.withAlpha(30))),
                             ),
                           ),
                         ),
@@ -516,7 +667,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                         // Cel wydania
                         Text(
                           tr('LABEL_ISSUE_TARGET'),
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 13),
                         ),
                         const SizedBox(height: 8),
                         SizedBox(
@@ -526,17 +678,21 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                             segments: [
                               ButtonSegment(
                                 value: 'vehicle',
-                                label: Text(tr('ISSUE_TO_VEHICLE'), style: const TextStyle(fontSize: 12)),
-                                icon: const Icon(Icons.local_shipping, size: 18),
+                                label: Text(tr('ISSUE_TO_VEHICLE'),
+                                    style: const TextStyle(fontSize: 12)),
+                                icon:
+                                    const Icon(Icons.local_shipping, size: 18),
                               ),
                               ButtonSegment(
                                 value: 'driver',
-                                label: Text(tr('ISSUE_TO_DRIVER'), style: const TextStyle(fontSize: 12)),
+                                label: Text(tr('ISSUE_TO_DRIVER'),
+                                    style: const TextStyle(fontSize: 12)),
                                 icon: const Icon(Icons.person, size: 18),
                               ),
                               ButtonSegment(
                                 value: 'workshop',
-                                label: Text(tr('ISSUE_TO_WORKSHOP'), style: const TextStyle(fontSize: 12)),
+                                label: Text(tr('ISSUE_TO_WORKSHOP'),
+                                    style: const TextStyle(fontSize: 12)),
                                 icon: const Icon(Icons.build, size: 18),
                               ),
                             ],
@@ -557,14 +713,17 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                               });
                             },
                             style: ButtonStyle(
-                              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                              backgroundColor:
+                                  WidgetStateProperty.resolveWith((states) {
                                 if (states.contains(WidgetState.selected)) {
                                   return Colors.blue.shade800.withAlpha(180);
                                 }
                                 return _inputBg;
                               }),
-                              foregroundColor: WidgetStateProperty.all(Colors.white),
-                              side: WidgetStateProperty.all(BorderSide(color: Colors.white.withAlpha(30))),
+                              foregroundColor:
+                                  WidgetStateProperty.all(Colors.white),
+                              side: WidgetStateProperty.all(BorderSide(
+                                  color: Colors.white.withAlpha(30))),
                             ),
                           ),
                         ),
@@ -578,11 +737,15 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
                               labelText: tr('LABEL_VEHICLE_PLATE'),
-                              labelStyle: const TextStyle(color: Colors.white54),
+                              labelStyle:
+                                  const TextStyle(color: Colors.white54),
                               hintText: tr('HINT_VEHICLE_PLATE'),
                               hintStyle: const TextStyle(color: Colors.white24),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                              prefixIcon: const Icon(Icons.local_shipping, color: _accent),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none),
+                              prefixIcon: const Icon(Icons.local_shipping,
+                                  color: _accent),
                               filled: true,
                               fillColor: _inputBg,
                             ),
@@ -594,26 +757,38 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                           _isLoadingDrivers
                               ? const Padding(
                                   padding: EdgeInsets.all(16),
-                                  child: Center(child: CircularProgressIndicator(color: _accent)),
+                                  child: Center(
+                                      child: CircularProgressIndicator(
+                                          color: _accent)),
                                 )
                               : GestureDetector(
                                   onTap: _showDriverSearchDialog,
                                   child: InputDecorator(
                                     decoration: InputDecoration(
                                       labelText: tr('LABEL_SELECT_DRIVER'),
-                                      labelStyle: const TextStyle(color: Colors.white54),
+                                      labelStyle: const TextStyle(
+                                          color: Colors.white54),
                                       hintText: tr('HINT_SELECT_DRIVER'),
-                                      hintStyle: const TextStyle(color: Colors.white24),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                                      prefixIcon: const Icon(Icons.person, color: _accent),
-                                      suffixIcon: const Icon(Icons.search, color: Colors.white38),
+                                      hintStyle: const TextStyle(
+                                          color: Colors.white24),
+                                      border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide.none),
+                                      prefixIcon: const Icon(Icons.person,
+                                          color: _accent),
+                                      suffixIcon: const Icon(Icons.search,
+                                          color: Colors.white38),
                                       filled: true,
                                       fillColor: _inputBg,
                                     ),
                                     child: Text(
-                                      _selectedDriverName ?? tr('HINT_SELECT_DRIVER'),
+                                      _selectedDriverName ??
+                                          tr('HINT_SELECT_DRIVER'),
                                       style: TextStyle(
-                                        color: _selectedDriverName != null ? Colors.white : Colors.white24,
+                                        color: _selectedDriverName != null
+                                            ? Colors.white
+                                            : Colors.white24,
                                         fontSize: 16,
                                       ),
                                     ),
@@ -628,7 +803,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                   // --- Sekcja: Lista pozycji ---
                   Row(
                     children: [
-                      Icon(Icons.list_alt, color: Colors.orange.shade400, size: 20),
+                      Icon(Icons.list_alt,
+                          color: Colors.orange.shade400, size: 20),
                       const SizedBox(width: 8),
                       Text(
                         tr('BATCH_ITEMS_LIST'),
@@ -641,8 +817,10 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                       const Spacer(),
                       if (issuedCount > 0)
                         Text(
-                          tr('BATCH_ISSUED_COUNT', args: {'count': '$issuedCount'}),
-                          style: TextStyle(color: Colors.green.shade400, fontSize: 13),
+                          tr('BATCH_ISSUED_COUNT',
+                              args: {'count': '$issuedCount'}),
+                          style: TextStyle(
+                              color: Colors.green.shade400, fontSize: 13),
                         ),
                     ],
                   ),
@@ -658,11 +836,13 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                       ),
                       child: Column(
                         children: [
-                          Icon(Icons.inventory_2_outlined, size: 48, color: Colors.white.withAlpha(40)),
+                          Icon(Icons.inventory_2_outlined,
+                              size: 48, color: Colors.white.withAlpha(40)),
                           const SizedBox(height: 12),
                           Text(
                             tr('BATCH_EMPTY_LIST'),
-                            style: const TextStyle(color: Colors.white38, fontSize: 14),
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 14),
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -688,7 +868,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                             foregroundColor: _accent,
                             side: BorderSide(color: _accent.withAlpha(120)),
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
@@ -702,7 +883,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                             foregroundColor: Colors.white70,
                             side: BorderSide(color: Colors.white.withAlpha(40)),
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
@@ -721,7 +903,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               decoration: BoxDecoration(
                 color: _cardBg,
-                border: Border(top: BorderSide(color: Colors.white.withAlpha(20))),
+                border:
+                    Border(top: BorderSide(color: Colors.white.withAlpha(20))),
               ),
               child: SafeArea(
                 top: false,
@@ -731,19 +914,25 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
                         )
                       : const Icon(Icons.send, color: Colors.white),
                   label: Text(
                     _isSubmitting
                         ? tr('BUTTON_SAVING')
-                        : tr('BATCH_ISSUE_ALL', args: {'count': '$pendingCount'}),
-                    style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                        : tr('BATCH_ISSUE_ALL',
+                            args: {'count': '$pendingCount'}),
+                    style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold),
                   ),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.orange.shade800,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                     minimumSize: const Size(double.infinity, 48),
                   ),
                 ),
@@ -775,7 +964,9 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
       child: item.isLoading
           ? const Padding(
               padding: EdgeInsets.all(20),
-              child: Center(child: CircularProgressIndicator(color: _accent, strokeWidth: 2)),
+              child: Center(
+                  child: CircularProgressIndicator(
+                      color: _accent, strokeWidth: 2)),
             )
           : Padding(
               padding: const EdgeInsets.all(12),
@@ -793,17 +984,53 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          item.productName.isNotEmpty ? item.productName : item.barcode,
+                          item.productName.isNotEmpty
+                              ? item.productName
+                              : item.barcode,
                           style: TextStyle(
-                            color: item.isIssued ? Colors.green.shade300 : Colors.white,
+                            color: item.isIssued
+                                ? Colors.green.shade300
+                                : Colors.white,
                             fontWeight: FontWeight.bold,
-                            decoration: item.isIssued ? TextDecoration.lineThrough : null,
+                            decoration: item.isIssued
+                                ? TextDecoration.lineThrough
+                                : null,
                           ),
                         ),
                       ),
+                      if (item.location != null && !item.isIssued) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _accent.withAlpha(40),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _accent.withAlpha(120)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.pin_drop,
+                                  color: _accent, size: 11),
+                              const SizedBox(width: 2),
+                              Text(
+                                item.location!,
+                                style: const TextStyle(
+                                  color: _accent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'monospace',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       if (!item.isIssued && !_isSubmitting)
                         IconButton(
-                          icon: Icon(Icons.close, color: Colors.red.shade400, size: 20),
+                          icon: Icon(Icons.close,
+                              color: Colors.red.shade400, size: 20),
                           onPressed: () => _removeItem(index),
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
@@ -816,7 +1043,10 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                   // Kod kreskowy
                   Text(
                     item.barcode,
-                    style: const TextStyle(color: Colors.white38, fontSize: 12, fontFamily: 'monospace'),
+                    style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 12,
+                        fontFamily: 'monospace'),
                   ),
 
                   // Błąd
@@ -824,7 +1054,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                     const SizedBox(height: 4),
                     Text(
                       item.error!,
-                      style: TextStyle(color: Colors.red.shade400, fontSize: 12),
+                      style:
+                          TextStyle(color: Colors.red.shade400, fontSize: 12),
                     ),
                   ],
 
@@ -855,16 +1086,23 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                         SizedBox(
                           width: 64,
                           child: TextField(
-                            controller: TextEditingController(text: _formatQty(item.quantity)),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            controller: TextEditingController(
+                                text: _formatQty(item.quantity)),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
                             decoration: InputDecoration(
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide.none),
                               filled: true,
                               fillColor: _inputBg,
                               isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 10),
                             ),
                             onChanged: (v) {
                               final qty = double.tryParse(v);
@@ -892,7 +1130,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                         const SizedBox(width: 12),
                         Text(
                           item.unit,
-                          style: const TextStyle(color: Colors.white54, fontSize: 14),
+                          style: const TextStyle(
+                              color: Colors.white54, fontSize: 14),
                         ),
                       ],
                     ),
@@ -902,21 +1141,28 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                       decoration: InputDecoration(
                         hintText: tr('LABEL_NOTE'),
-                        hintStyle: const TextStyle(color: Colors.white24, fontSize: 13),
-                        prefixIcon: const Icon(Icons.notes, color: Colors.white38, size: 18),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                        hintStyle: const TextStyle(
+                            color: Colors.white24, fontSize: 13),
+                        prefixIcon: const Icon(Icons.notes,
+                            color: Colors.white38, size: 18),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none),
                         filled: true,
                         fillColor: _inputBg,
                         isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
                       ),
-                      onChanged: (v) => item.note = v.trim().isEmpty ? null : v.trim(),
+                      onChanged: (v) =>
+                          item.note = v.trim().isEmpty ? null : v.trim(),
                     ),
                   ] else ...[
                     const SizedBox(height: 4),
                     Text(
                       '${_formatQty(item.quantity)} ${item.unit}',
-                      style: TextStyle(color: Colors.green.shade300, fontSize: 13),
+                      style:
+                          TextStyle(color: Colors.green.shade300, fontSize: 13),
                     ),
                   ],
                 ],
@@ -999,7 +1245,9 @@ class _DriverSearchDialogState extends State<_DriverSearchDialog> {
                           },
                         )
                       : null,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
                   filled: true,
                   fillColor: _inputBg,
                 ),
@@ -1017,7 +1265,8 @@ class _DriverSearchDialogState extends State<_DriverSearchDialog> {
             Expanded(
               child: _filtered.isEmpty
                   ? Center(
-                      child: Text(tr('LABEL_NO_RESULTS'), style: const TextStyle(color: Colors.white38)),
+                      child: Text(tr('LABEL_NO_RESULTS'),
+                          style: const TextStyle(color: Colors.white38)),
                     )
                   : ListView.builder(
                       itemCount: _filtered.length,
@@ -1033,7 +1282,8 @@ class _DriverSearchDialogState extends State<_DriverSearchDialog> {
                               style: const TextStyle(color: _accent),
                             ),
                           ),
-                          title: Text(name, style: const TextStyle(color: Colors.white)),
+                          title: Text(name,
+                              style: const TextStyle(color: Colors.white)),
                           onTap: () {
                             widget.onSelected(id, name);
                             Navigator.pop(ctx);
@@ -1051,7 +1301,8 @@ class _DriverSearchDialogState extends State<_DriverSearchDialog> {
 
 /// Bottom sheet z listą produktów do wyboru (z wyszukiwarką).
 class _ProductPickerSheet extends StatefulWidget {
-  final void Function(String barcode, String productName, String unit, double stock) onSelected;
+  final void Function(String barcode, String productName, String unit,
+      double stock, String? location) onSelected;
 
   const _ProductPickerSheet({required this.onSelected});
 
@@ -1173,7 +1424,9 @@ class _ProductPickerSheetState extends State<_ProductPickerSheet> {
                           },
                         )
                       : null,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
                   filled: true,
                   fillColor: _inputBg,
                 ),
@@ -1193,10 +1446,12 @@ class _ProductPickerSheetState extends State<_ProductPickerSheet> {
             // Lista
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: _accent))
+                  ? const Center(
+                      child: CircularProgressIndicator(color: _accent))
                   : _filtered.isEmpty
                       ? Center(
-                          child: Text(tr('LABEL_NO_RESULTS'), style: const TextStyle(color: Colors.white38)),
+                          child: Text(tr('LABEL_NO_RESULTS'),
+                              style: const TextStyle(color: Colors.white38)),
                         )
                       : ListView.builder(
                           controller: scrollController,
@@ -1204,26 +1459,82 @@ class _ProductPickerSheetState extends State<_ProductPickerSheet> {
                           itemBuilder: (ctx, i) {
                             final part = _filtered[i];
                             final barcode = part['barcode'] as String? ?? '';
-                            final name = part['product_name'] as String? ?? tr('PRODUCT_NO_NAME');
+                            final name = part['product_name'] as String? ??
+                                tr('PRODUCT_NO_NAME');
                             final unit = part['unit'] as String? ?? 'szt';
-                            final stock = double.tryParse(part['current_stock'].toString()) ?? 0;
+                            final stock = double.tryParse(
+                                    part['current_stock'].toString()) ??
+                                0;
+                            final rack =
+                                (part['location_rack'] as String?)?.trim();
+                            final shelf = part['location_shelf'];
+                            final hasLocation = rack != null &&
+                                rack.isNotEmpty &&
+                                shelf != null;
+                            final locationLabel = hasLocation
+                                ? '$rack${shelf is int ? shelf : int.tryParse(shelf.toString()) ?? shelf}'
+                                : null;
 
                             return ListTile(
                               leading: CircleAvatar(
                                 backgroundColor: _accent.withAlpha(40),
-                                child: const Icon(Icons.inventory_2, color: _accent, size: 20),
+                                child: const Icon(Icons.inventory_2,
+                                    color: _accent, size: 20),
                               ),
-                              title: Text(
-                                name,
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      name,
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w500),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (locationLabel != null) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: _accent.withAlpha(40),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                            color: _accent.withAlpha(120)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.pin_drop,
+                                              color: _accent, size: 11),
+                                          const SizedBox(width: 2),
+                                          Text(
+                                            locationLabel,
+                                            style: const TextStyle(
+                                              color: _accent,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: 'monospace',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                               subtitle: Text(
                                 '$barcode  •  ${_formatQty(stock)} $unit',
-                                style: const TextStyle(color: Colors.white38, fontSize: 12),
+                                style: const TextStyle(
+                                    color: Colors.white38, fontSize: 12),
                               ),
-                              trailing: Icon(Icons.add_circle_outline, color: Colors.green.shade400),
+                              trailing: Icon(Icons.add_circle_outline,
+                                  color: Colors.green.shade400),
                               onTap: () {
-                                widget.onSelected(barcode, name, unit, stock);
+                                widget.onSelected(
+                                    barcode, name, unit, stock, locationLabel);
                                 Navigator.pop(ctx);
                               },
                             );

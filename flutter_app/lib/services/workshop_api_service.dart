@@ -36,7 +36,8 @@ class WorkshopApiService {
   }
 
   /// Pobierz listę usług warsztatowych pogrupowanych (type: 1=pojazd, 2=naczepa).
-  static Future<List<Map<String, dynamic>>> getServiceGroups(int objectType) async {
+  static Future<List<Map<String, dynamic>>> getServiceGroups(
+      int objectType) async {
     try {
       final uri = Uri.parse('$_endpoint?services=1&type=$objectType');
       final response = await http.get(uri).timeout(const Duration(seconds: 10));

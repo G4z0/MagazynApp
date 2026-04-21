@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../l10n/translations.dart';
 import '../services/api_service.dart';
+import '../services/local_history_service.dart';
+import '../services/offline_queue_service.dart';
 import 'product_form_screen.dart';
 
 /// Ekran stanów magazynowych — lista produktów z aktualnym stanem.
@@ -89,7 +92,10 @@ class _StockScreenState extends State<StockScreen> {
                   ),
                 ),
                 IconButton(
-                  onPressed: _isLoading ? null : () => _loadProducts(search: _searchController.text.trim()),
+                  onPressed: _isLoading
+                      ? null
+                      : () =>
+                          _loadProducts(search: _searchController.text.trim()),
                   icon: Icon(
                     Icons.refresh,
                     color: _isLoading ? Colors.white24 : accent,
@@ -125,7 +131,8 @@ class _StockScreenState extends State<StockScreen> {
                         },
                       )
                     : null,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
               onChanged: _onSearchChanged,
             ),
@@ -163,7 +170,8 @@ class _StockScreenState extends State<StockScreen> {
             Text(_error!, style: const TextStyle(color: Colors.white54)),
             const SizedBox(height: 16),
             TextButton.icon(
-              onPressed: () => _loadProducts(search: _searchController.text.trim()),
+              onPressed: () =>
+                  _loadProducts(search: _searchController.text.trim()),
               icon: const Icon(Icons.refresh),
               label: Text(tr('BUTTON_RETRY')),
             ),
@@ -181,7 +189,8 @@ class _StockScreenState extends State<StockScreen> {
             const SizedBox(height: 12),
             Text(
               _searchController.text.isNotEmpty
-                  ? tr('STOCK_NO_RESULTS', args: {'query': _searchController.text})
+                  ? tr('STOCK_NO_RESULTS',
+                      args: {'query': _searchController.text})
                   : tr('STOCK_EMPTY'),
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white38, fontSize: 14),
@@ -206,11 +215,14 @@ class _StockScreenState extends State<StockScreen> {
     final name = product['product_name'] ?? tr('PRODUCT_NO_NAME');
     final barcode = product['barcode'] ?? '';
     final unit = product['unit'] ?? 'szt';
-    final currentStock = double.tryParse(product['current_stock'].toString()) ?? 0;
+    final currentStock =
+        double.tryParse(product['current_stock'].toString()) ?? 0;
     final totalIn = double.tryParse(product['total_in'].toString()) ?? 0;
     final totalOut = double.tryParse(product['total_out'].toString()) ?? 0;
     final lastMovement = product['last_movement'] as String?;
     final isLow = currentStock <= 0;
+    final locationLabel =
+        _formatLocation(product['location_rack'], product['location_shelf']);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -222,109 +234,149 @@ class _StockScreenState extends State<StockScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: () => _showProductDetail(barcode),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              // Stock badge
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: isLow
-                      ? Colors.red.withAlpha(25)
-                      : accent.withAlpha(25),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Column(
+        child: Stack(
+          children: [
+            // Lokalizacja — chip w prawym górnym rogu karty.
+            if (locationLabel != null)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: accent.withAlpha(40),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: accent.withAlpha(120)),
+                  ),
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      const Icon(Icons.pin_drop, color: accent, size: 12),
+                      const SizedBox(width: 3),
                       Text(
-                        _formatQty(currentStock),
-                        style: TextStyle(
-                          color: isLow ? Colors.red.shade300 : accent,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        unit,
-                        style: TextStyle(
-                          color: isLow ? Colors.red.shade300 : accent,
+                        locationLabel,
+                        style: const TextStyle(
+                          color: accent,
                           fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'monospace',
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              // Product info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  // Stock badge
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: isLow
+                          ? Colors.red.withAlpha(25)
+                          : accent.withAlpha(25),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      barcode,
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.add_circle_outline,
-                            color: Colors.green.shade400, size: 13),
-                        const SizedBox(width: 3),
-                        Text(
-                          '${_formatQty(totalIn)} $unit',
-                          style: TextStyle(
-                              color: Colors.green.shade400, fontSize: 11),
-                        ),
-                        const SizedBox(width: 10),
-                        Icon(Icons.remove_circle_outline,
-                            color: Colors.red.shade400, size: 13),
-                        const SizedBox(width: 3),
-                        Text(
-                          '${_formatQty(totalOut)} $unit',
-                          style: TextStyle(
-                              color: Colors.red.shade400, fontSize: 11),
-                        ),
-                        if (lastMovement != null) ...[
-                          const Spacer(),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           Text(
-                            _formatDate(lastMovement),
-                            style: const TextStyle(
-                                color: Colors.white24, fontSize: 11),
+                            _formatQty(currentStock),
+                            style: TextStyle(
+                              color: isLow ? Colors.red.shade300 : accent,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            unit,
+                            style: TextStyle(
+                              color: isLow ? Colors.red.shade300 : accent,
+                              fontSize: 11,
+                            ),
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Product info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.only(
+                              right: locationLabel != null ? 80 : 0),
+                          child: Text(
+                            name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          barcode,
+                          style: const TextStyle(
+                            color: Colors.white38,
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.add_circle_outline,
+                                color: Colors.green.shade400, size: 13),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${_formatQty(totalIn)} $unit',
+                              style: TextStyle(
+                                  color: Colors.green.shade400, fontSize: 11),
+                            ),
+                            const SizedBox(width: 10),
+                            Icon(Icons.remove_circle_outline,
+                                color: Colors.red.shade400, size: 13),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${_formatQty(totalOut)} $unit',
+                              style: TextStyle(
+                                  color: Colors.red.shade400, fontSize: 11),
+                            ),
+                            if (lastMovement != null) ...[
+                              const Spacer(),
+                              Text(
+                                _formatDate(lastMovement),
+                                style: const TextStyle(
+                                    color: Colors.white24, fontSize: 11),
+                              ),
+                            ],
+                          ],
+                        ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    isLow ? Icons.warning_amber : Icons.chevron_right,
+                    color: isLow ? Colors.red.shade300 : Colors.white24,
+                    size: 22,
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Icon(
-                isLow ? Icons.warning_amber : Icons.chevron_right,
-                color: isLow ? Colors.red.shade300 : Colors.white24,
-                size: 22,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -390,7 +442,28 @@ class _StockScreenState extends State<StockScreen> {
                     icon: const Icon(Icons.edit, color: accent, size: 20),
                     tooltip: tr('STOCK_RENAME_PRODUCT'),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    constraints:
+                        const BoxConstraints(minWidth: 36, minHeight: 36),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _showEditLocationDialog(
+                        barcode,
+                        data['location_rack'] as String?,
+                        data['location_shelf'] is int
+                            ? data['location_shelf'] as int?
+                            : (data['location_shelf'] != null
+                                ? int.tryParse(
+                                    data['location_shelf'].toString())
+                                : null),
+                      );
+                    },
+                    icon: const Icon(Icons.pin_drop, color: accent, size: 20),
+                    tooltip: tr('STOCK_EDIT_LOCATION'),
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 36, minHeight: 36),
                   ),
                 ],
               ),
@@ -403,6 +476,33 @@ class _StockScreenState extends State<StockScreen> {
                   fontSize: 14,
                 ),
               ),
+              if (_formatLocation(
+                      data['location_rack'], data['location_shelf']) !=
+                  null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.pin_drop, color: accent, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${tr('LOCATION_LABEL')}: ',
+                      style:
+                          const TextStyle(color: secondaryText, fontSize: 13),
+                    ),
+                    Text(
+                      _formatLocation(
+                              data['location_rack'], data['location_shelf']) ??
+                          '',
+                      style: const TextStyle(
+                        color: accent,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 16),
             ],
             // Przycisk Wydaj
@@ -425,12 +525,16 @@ class _StockScreenState extends State<StockScreen> {
                   icon: const Icon(Icons.remove_circle, color: Colors.white),
                   label: Text(
                     tr('BUTTON_ISSUE_GOODS'),
-                    style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold),
                   ),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     backgroundColor: Colors.orange.shade800,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     minimumSize: const Size(double.infinity, 48),
                   ),
                 ),
@@ -445,7 +549,8 @@ class _StockScreenState extends State<StockScreen> {
                 final isIn = m['movement_type'] == 'in';
                 return Container(
                   margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: cardBg,
                     borderRadius: BorderRadius.circular(10),
@@ -497,8 +602,8 @@ class _StockScreenState extends State<StockScreen> {
                       ),
                       Text(
                         _formatDate(m['created_at']),
-                        style:
-                            const TextStyle(color: Colors.white24, fontSize: 11),
+                        style: const TextStyle(
+                            color: Colors.white24, fontSize: 11),
                       ),
                     ],
                   ),
@@ -546,7 +651,8 @@ class _StockScreenState extends State<StockScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(tr('BUTTON_CANCEL'), style: const TextStyle(color: Colors.white54)),
+            child: Text(tr('BUTTON_CANCEL'),
+                style: const TextStyle(color: Colors.white54)),
           ),
           FilledButton(
             onPressed: () {
@@ -556,7 +662,8 @@ class _StockScreenState extends State<StockScreen> {
               }
             },
             style: FilledButton.styleFrom(backgroundColor: accent),
-            child: Text(tr('BUTTON_SAVE'), style: const TextStyle(color: Colors.white)),
+            child: Text(tr('BUTTON_SAVE'),
+                style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -565,7 +672,8 @@ class _StockScreenState extends State<StockScreen> {
 
     if (newName == null || newName == currentName) return;
 
-    final success = await ApiService.renameProduct(barcode: barcode, newName: newName);
+    final success =
+        await ApiService.renameProduct(barcode: barcode, newName: newName);
     if (mounted) {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -584,6 +692,226 @@ class _StockScreenState extends State<StockScreen> {
         );
       }
     }
+  }
+
+  String? _formatLocation(dynamic rack, dynamic shelf) {
+    if (rack == null || shelf == null) return null;
+    final rackStr = rack.toString().trim();
+    if (rackStr.isEmpty) return null;
+    final shelfInt = shelf is int ? shelf : int.tryParse(shelf.toString());
+    if (shelfInt == null) return null;
+    return '$rackStr$shelfInt';
+  }
+
+  Future<void> _showEditLocationDialog(
+    String barcode,
+    String? currentRack,
+    int? currentShelf,
+  ) async {
+    final result = await showDialog<({String? rack, int? shelf})>(
+      context: context,
+      builder: (ctx) => _LocationEditDialog(
+        initialRack: currentRack,
+        initialShelf: currentShelf,
+        accent: accent,
+      ),
+    );
+
+    if (result == null) return;
+    final rack = result.rack;
+    final shelf = result.shelf;
+
+    try {
+      await ApiService.setProductLocation(
+          barcode: barcode, rack: rack, shelf: shelf);
+      await LocalHistoryService().add(
+        actionType: 'set_location',
+        title: tr('LOCATION_EDIT_TITLE'),
+        subtitle: '${rack ?? '-'}${shelf ?? ''} — $barcode',
+        barcode: barcode,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('LOCATION_SAVED')),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+        _loadProducts(search: _searchController.text.trim());
+      }
+    } on NetworkException {
+      await OfflineQueueService().enqueueSetLocation(
+        barcode: barcode,
+        rack: rack,
+        shelf: shelf,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('LOCATION_QUEUED')),
+            backgroundColor: Colors.orange.shade800,
+          ),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showLocationLookupDialog() async {
+    final ctrl = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2F3A),
+        title: Text(tr('LOCATION_LOOKUP_TITLE'),
+            style: const TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
+          decoration: InputDecoration(
+            hintText: tr('LOCATION_LOOKUP_HINT'),
+            hintStyle: const TextStyle(color: Colors.white38),
+            filled: true,
+            fillColor: const Color(0xFF1C1E26),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+            prefixIcon: const Icon(Icons.search, color: accent),
+          ),
+          textInputAction: TextInputAction.search,
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(tr('BUTTON_CANCEL'),
+                style: const TextStyle(color: Colors.white54)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            style: FilledButton.styleFrom(backgroundColor: accent),
+            child: Text(tr('BUTTON_SEARCH'),
+                style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+
+    if (code == null || code.isEmpty || !mounted) return;
+
+    Map<String, dynamic>? product;
+    String? errorMessage;
+    try {
+      product = await ApiService.getProductLocation(code);
+    } on NetworkException catch (e) {
+      errorMessage = e.message;
+    } on ApiException catch (e) {
+      errorMessage = e.message;
+    }
+
+    if (!mounted) return;
+
+    if (errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+      return;
+    }
+
+    if (product == null) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF2C2F3A),
+          icon: const Icon(Icons.search_off, color: Colors.orange, size: 40),
+          title: Text(tr('LOCATION_LOOKUP_NOT_FOUND'),
+              style: const TextStyle(color: Colors.white, fontSize: 16)),
+          content: Text(code,
+              style: const TextStyle(
+                  color: Colors.white54, fontFamily: 'monospace')),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: FilledButton.styleFrom(backgroundColor: accent),
+              child: Text(tr('BUTTON_CONFIRM'),
+                  style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final loc =
+        _formatLocation(product['location_rack'], product['location_shelf']);
+    final pname = product['product_name'] ?? tr('PRODUCT_NO_NAME');
+    final pbarcode = product['barcode']?.toString() ?? code;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2F3A),
+        icon: Icon(
+          loc != null ? Icons.pin_drop : Icons.location_off,
+          color: accent,
+          size: 48,
+        ),
+        title: Text(pname,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            textAlign: TextAlign.center),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(pbarcode,
+                style: const TextStyle(
+                    color: Colors.white38,
+                    fontFamily: 'monospace',
+                    fontSize: 12)),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              decoration: BoxDecoration(
+                color: accent.withAlpha(30),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: accent.withAlpha(80)),
+              ),
+              child: Text(
+                loc ?? tr('LOCATION_NONE'),
+                style: TextStyle(
+                  color: loc != null ? accent : Colors.white54,
+                  fontSize: loc != null ? 32 : 16,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                  letterSpacing: 3,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: FilledButton.styleFrom(backgroundColor: accent),
+            child: Text(tr('BUTTON_CONFIRM'),
+                style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatQty(dynamic qty) {
@@ -605,5 +933,165 @@ class _StockScreenState extends State<StockScreen> {
     if (count == 1) return tr('PRODUCT_SINGULAR');
     if (count >= 2 && count <= 4) return tr('PRODUCT_PLURAL_FEW');
     return tr('PRODUCT_PLURAL_MANY');
+  }
+}
+
+/// Dialog edycji lokalizacji (regał + półka).
+///
+/// Wyodrębniony jako [StatefulWidget], żeby [TextEditingController]-y żyły
+/// w [State] i były dispose'owane dopiero w [State.dispose()] — czyli już
+/// po zakończeniu animacji zamykania dialogu. Wcześniej dispose tuż po
+/// `Navigator.pop` powodował, że pola w jeszcze-zamykającym-się [Form]
+/// odwoływały się do zwolnionych kontrolerów, co kończyło się
+/// asercją `_dependents.isEmpty` w `InheritedElement.debugDeactivated`.
+class _LocationEditDialog extends StatefulWidget {
+  const _LocationEditDialog({
+    required this.initialRack,
+    required this.initialShelf,
+    required this.accent,
+  });
+
+  final String? initialRack;
+  final int? initialShelf;
+  final Color accent;
+
+  @override
+  State<_LocationEditDialog> createState() => _LocationEditDialogState();
+}
+
+class _LocationEditDialogState extends State<_LocationEditDialog> {
+  late final TextEditingController _rackCtrl;
+  late final TextEditingController _shelfCtrl;
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _rackCtrl = TextEditingController(text: widget.initialRack ?? '');
+    _shelfCtrl =
+        TextEditingController(text: widget.initialShelf?.toString() ?? '');
+  }
+
+  @override
+  void dispose() {
+    _rackCtrl.dispose();
+    _shelfCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onSave() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final rackOut = _rackCtrl.text.trim().toUpperCase();
+    final shelfOut = _shelfCtrl.text.trim();
+    final String? rack = rackOut.isEmpty ? null : rackOut;
+    final int? shelf = shelfOut.isEmpty ? null : int.tryParse(shelfOut);
+    Navigator.pop<({String? rack, int? shelf})>(
+        context, (rack: rack, shelf: shelf));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF2C2F3A),
+      title: Text(tr('LOCATION_EDIT_TITLE'),
+          style: const TextStyle(color: Colors.white)),
+      content: Form(
+        key: _formKey,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: TextFormField(
+                controller: _rackCtrl,
+                textCapitalization: TextCapitalization.characters,
+                style: const TextStyle(color: Colors.white, letterSpacing: 2),
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(2),
+                  FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
+                  TextInputFormatter.withFunction(
+                      (o, n) => n.copyWith(text: n.text.toUpperCase())),
+                ],
+                decoration: InputDecoration(
+                  labelText: tr('LOCATION_RACK'),
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  hintText: tr('LOCATION_HINT_RACK'),
+                  hintStyle: const TextStyle(color: Colors.white24),
+                  filled: true,
+                  fillColor: const Color(0xFF1C1E26),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                validator: (v) {
+                  final rack = (v ?? '').trim();
+                  final shelf = _shelfCtrl.text.trim();
+                  if (rack.isEmpty && shelf.isEmpty) return null;
+                  if (rack.isEmpty) {
+                    return tr('LOCATION_VALIDATION_BOTH_REQUIRED');
+                  }
+                  if (!RegExp(r'^[A-Z]{1,2}$').hasMatch(rack)) {
+                    return tr('LOCATION_VALIDATION_RACK');
+                  }
+                  return null;
+                },
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: TextFormField(
+                controller: _shelfCtrl,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(2),
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
+                decoration: InputDecoration(
+                  labelText: tr('LOCATION_SHELF'),
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  hintText: tr('LOCATION_HINT_SHELF'),
+                  hintStyle: const TextStyle(color: Colors.white24),
+                  filled: true,
+                  fillColor: const Color(0xFF1C1E26),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                validator: (v) {
+                  final shelf = (v ?? '').trim();
+                  final rack = _rackCtrl.text.trim();
+                  if (rack.isEmpty && shelf.isEmpty) return null;
+                  if (shelf.isEmpty) {
+                    return tr('LOCATION_VALIDATION_BOTH_REQUIRED');
+                  }
+                  final n = int.tryParse(shelf);
+                  if (n == null || n < 0 || n > 99) {
+                    return tr('LOCATION_VALIDATION_SHELF');
+                  }
+                  return null;
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(tr('BUTTON_CANCEL'),
+              style: const TextStyle(color: Colors.white54)),
+        ),
+        FilledButton(
+          onPressed: _onSave,
+          style: FilledButton.styleFrom(backgroundColor: widget.accent),
+          child: Text(tr('BUTTON_SAVE'),
+              style: const TextStyle(color: Colors.white)),
+        ),
+      ],
+    );
   }
 }

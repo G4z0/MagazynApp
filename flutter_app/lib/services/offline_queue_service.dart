@@ -30,14 +30,15 @@ class OfflineQueueService {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       p.join(dbPath, 'offline_queue.db'),
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE queue (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action_type TEXT NOT NULL DEFAULT 'save_product',
             barcode TEXT NOT NULL,
             code_type TEXT NOT NULL DEFAULT 'barcode',
-            product_name TEXT NOT NULL,
+            product_name TEXT NOT NULL DEFAULT '',
             movement_type TEXT NOT NULL DEFAULT 'in',
             quantity REAL NOT NULL DEFAULT 1,
             unit TEXT NOT NULL DEFAULT 'szt',
@@ -49,6 +50,8 @@ class OfflineQueueService {
             issue_target TEXT,
             driver_id INTEGER,
             driver_name TEXT,
+            location_rack TEXT,
+            location_shelf INTEGER,
             created_at TEXT NOT NULL
           )
         ''');
@@ -94,6 +97,20 @@ class OfflineQueueService {
             "ALTER TABLE queue ADD COLUMN driver_name TEXT",
           );
         }
+        if (oldVersion < 7) {
+          // v7: typy akcji w jednej kolejce + lokalizacja produktu.
+          // 'save_product' (domyślne) — istniejący przepływ;
+          // 'set_location' — zmiana lokalizacji w stock_products.
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN action_type TEXT NOT NULL DEFAULT 'save_product'",
+          );
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN location_rack TEXT",
+          );
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN location_shelf INTEGER",
+          );
+        }
       },
     );
   }
@@ -129,10 +146,13 @@ class OfflineQueueService {
     String? issueTarget,
     int? driverId,
     String? driverName,
+    String? locationRack,
+    int? locationShelf,
   }) async {
     final db = await database;
     final auth = AuthService();
     await db.insert('queue', {
+      'action_type': 'save_product',
       'barcode': barcode,
       'code_type': codeType.apiValue,
       'product_name': productName,
@@ -147,6 +167,35 @@ class OfflineQueueService {
       'issue_target': issueTarget,
       'driver_id': driverId,
       'driver_name': driverName,
+      'location_rack': locationRack,
+      'location_shelf': locationShelf,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    await _refreshCount();
+  }
+
+  /// Dodaj zmianę lokalizacji do kolejki offline.
+  /// [rack]/[shelf] = null/null oznacza wyczyszczenie lokalizacji.
+  Future<void> enqueueSetLocation({
+    required String barcode,
+    required String? rack,
+    required int? shelf,
+  }) async {
+    final db = await database;
+    final auth = AuthService();
+    await db.insert('queue', {
+      'action_type': 'set_location',
+      'barcode': barcode,
+      // wymagane NOT NULL kolumny — wypełniamy placeholderami
+      'code_type': 'barcode',
+      'product_name': '',
+      'movement_type': 'in',
+      'quantity': 0,
+      'unit': 'szt',
+      'user_id': auth.userId,
+      'user_name': auth.displayName,
+      'location_rack': rack,
+      'location_shelf': shelf,
       'created_at': DateTime.now().toIso8601String(),
     });
     await _refreshCount();
@@ -163,20 +212,32 @@ class OfflineQueueService {
 
       for (final item in items) {
         try {
-          await ApiService.saveProduct(
-            barcode: item['barcode'] as String,
-            productName: item['product_name'] as String,
-            quantity: (item['quantity'] as num).toDouble(),
-            unit: item['unit'] as String,
-            codeType: CodeType.fromApi(item['code_type'] as String?),
-            movementType: item['movement_type'] as String? ?? 'in',
-            note: item['note'] as String?,
-            issueReason: item['issue_reason'] as String?,
-            vehiclePlate: item['vehicle_plate'] as String?,
-            issueTarget: item['issue_target'] as String?,
-            driverId: item['driver_id'] as int?,
-            driverName: item['driver_name'] as String?,
-          );
+          final actionType = (item['action_type'] as String?) ?? 'save_product';
+
+          if (actionType == 'set_location') {
+            await ApiService.setProductLocation(
+              barcode: item['barcode'] as String,
+              rack: item['location_rack'] as String?,
+              shelf: item['location_shelf'] as int?,
+            );
+          } else {
+            await ApiService.saveProduct(
+              barcode: item['barcode'] as String,
+              productName: item['product_name'] as String,
+              quantity: (item['quantity'] as num).toDouble(),
+              unit: item['unit'] as String,
+              codeType: CodeType.fromApi(item['code_type'] as String?),
+              movementType: item['movement_type'] as String? ?? 'in',
+              note: item['note'] as String?,
+              issueReason: item['issue_reason'] as String?,
+              vehiclePlate: item['vehicle_plate'] as String?,
+              issueTarget: item['issue_target'] as String?,
+              driverId: item['driver_id'] as int?,
+              driverName: item['driver_name'] as String?,
+              locationRack: item['location_rack'] as String?,
+              locationShelf: item['location_shelf'] as int?,
+            );
+          }
           // Wysłano — usuń z kolejki
           await db.delete('queue', where: 'id = ?', whereArgs: [item['id']]);
           await _refreshCount();

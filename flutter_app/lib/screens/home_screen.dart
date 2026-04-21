@@ -93,7 +93,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: accent,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.warehouse, color: Colors.white, size: 24),
+                    child: const Icon(Icons.warehouse,
+                        color: Colors.white, size: 24),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -121,7 +122,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     builder: (context, count, _) {
                       if (count == 0) return const SizedBox.shrink();
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.orange.shade800,
                           borderRadius: BorderRadius.circular(20),
@@ -129,9 +131,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.cloud_upload, size: 16, color: Colors.white),
+                            const Icon(Icons.cloud_upload,
+                                size: 16, color: Colors.white),
                             const SizedBox(width: 4),
-                            Text('$count', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            Text('$count',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold)),
                           ],
                         ),
                       );
@@ -226,7 +232,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 28),
+                  child: const Icon(Icons.qr_code_scanner,
+                      color: Colors.white, size: 28),
                 ),
               ),
               _NavItem(
@@ -277,7 +284,8 @@ class _NavItem extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               label,
-              style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                  color: color, fontSize: 10, fontWeight: FontWeight.w500),
             ),
           ],
         ),

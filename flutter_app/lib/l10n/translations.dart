@@ -188,7 +188,8 @@ const Map<String, Map<String, String>> _translations = {
     'PLATE_RESULTS_SUBTITLE': 'Wybierz właściwą tablicę',
     'PLATE_SEARCHING': 'Szukam pojazdu...',
     'PLATE_NOT_FOUND_TITLE': 'Nie znaleziono',
-    'PLATE_NOT_FOUND_CONTENT': 'Nie znaleziono pojazdu/naczepy o tablicy:\n{plate}',
+    'PLATE_NOT_FOUND_CONTENT':
+        'Nie znaleziono pojazdu/naczepy o tablicy:\n{plate}',
     'PLATE_VEHICLES_FOUND': 'Znalezione pojazdy',
     'PLATE_INSTRUCTION': 'Umieść tablicę w ramce',
     'DIALOG_ENTER_PLATE_TITLE': 'Wpisz tablicę',
@@ -201,7 +202,8 @@ const Map<String, Map<String, String>> _translations = {
     'OCR_NO_TEXT': 'Nie rozpoznano żadnego tekstu',
     'OCR_NO_CODES': 'Nie znaleziono kodów w tekście',
     'OCR_RESULTS_TITLE': 'Rozpoznany tekst ({count})',
-    'OCR_INSTRUCTION': 'Skieruj kamerę na etykietę z kodem produktu\ni naciśnij przycisk migawki',
+    'OCR_INSTRUCTION':
+        'Skieruj kamerę na etykietę z kodem produktu\ni naciśnij przycisk migawki',
     'OCR_PROCESSING': 'Rozpoznaję tekst...',
     'OCR_TAKE_PHOTO': 'Zrób zdjęcie',
     'OCR_EDIT_INSTRUCTION': 'Popraw tekst jeśli trzeba, potem wybierz kod:',
@@ -213,21 +215,26 @@ const Map<String, Map<String, String>> _translations = {
     'SETTINGS_ABOUT_TITLE': 'Warsztat',
     'SETTINGS_ABOUT_SUBTITLE': 'Warsztat v1.0 — LogisticsERP',
     'SETTINGS_VERSION': 'Wersja 1.0',
-    'SETTINGS_ABOUT_DESCRIPTION': 'Aplikacja warsztatowa zintegrowana z systemem LogisticsERP. Zarządzanie stanami magazynowymi i naprawami.',
-    'SETTINGS_ABOUT_FEATURES': 'Funkcje:\n• Skanowanie kodów kreskowych\n• Przyjęcia i wydania towarów\n• Sprawdzanie stanów magazynowych\n• Dodawanie napraw\n• Skanowanie tablic rejestracyjnych\n• Tryb offline z automatyczną synchronizacją',
+    'SETTINGS_ABOUT_DESCRIPTION':
+        'Aplikacja warsztatowa zintegrowana z systemem LogisticsERP. Zarządzanie stanami magazynowymi i naprawami.',
+    'SETTINGS_ABOUT_FEATURES':
+        'Funkcje:\n• Skanowanie kodów kreskowych\n• Przyjęcia i wydania towarów\n• Sprawdzanie stanów magazynowych\n• Dodawanie napraw\n• Skanowanie tablic rejestracyjnych\n• Tryb offline z automatyczną synchronizacją',
     'SETTINGS_CHECKING_CONNECTION': 'Sprawdzanie połączenia...',
     'STATUS_CONNECTED': 'Połączono',
-    'STATUS_CONNECTED_DETAIL': 'Serwer {host} odpowiada poprawnie.\nCzas odpowiedzi: OK',
+    'STATUS_CONNECTED_DETAIL':
+        'Serwer {host} odpowiada poprawnie.\nCzas odpowiedzi: OK',
     'STATUS_SERVER_ERROR': 'Błąd serwera',
     'STATUS_SERVER_ERROR_DETAIL': 'Serwer odpowiedział kodem: {code}',
     'STATUS_NO_CONNECTION': 'Brak połączenia',
-    'STATUS_NO_CONNECTION_DETAIL': 'Nie można połączyć się z serwerem {host}.\n\nSprawdź czy urządzenie jest w sieci WiFi firmy.',
+    'STATUS_NO_CONNECTION_DETAIL':
+        'Nie można połączyć się z serwerem {host}.\n\nSprawdź czy urządzenie jest w sieci WiFi firmy.',
     'SETTINGS_OFFLINE_QUEUE': 'Kolejka offline',
     'SETTINGS_LANGUAGE': 'Język',
     'SETTINGS_LANGUAGE_SUBTITLE': 'Zmień język aplikacji',
     'QUEUE_ALL_SYNCED': 'Wszystko zsynchronizowane',
     'QUEUE_NO_PENDING': 'Brak oczekujących zapisów',
-    'QUEUE_PENDING_INFO': 'Oczekujące zapisy zostaną wysłane automatycznie po przywróceniu połączenia WiFi.',
+    'QUEUE_PENDING_INFO':
+        'Oczekujące zapisy zostaną wysłane automatycznie po przywróceniu połączenia WiFi.',
     'QUEUE_SYNC_ATTEMPT': 'Próba synchronizacji...',
     'SETTINGS_API_SERVER': 'Serwer API',
     'SETTINGS_OFFLINE_QUEUE_TILE': 'Kolejka offline',
@@ -269,12 +276,14 @@ const Map<String, Map<String, String>> _translations = {
     'DIALOG_ENTER_CODE_HINT': 'np. 5901234123457 lub 2VP340961-111',
     'DIALOG_ENTER_CODE_HELPER': 'Kod kreskowy lub kod produktu',
     'DIALOG_QUEUED_TITLE': 'Zapisano w kolejce',
-    'DIALOG_QUEUED_CONTENT': 'Brak połączenia z serwerem. Ruch zostanie wysłany automatycznie gdy WiFi wróci.',
+    'DIALOG_QUEUED_CONTENT':
+        'Brak połączenia z serwerem. Ruch zostanie wysłany automatycznie gdy WiFi wróci.',
     'DIALOG_SUCCESS_TITLE': 'Sukces!',
     'DIALOG_LOGOUT_TITLE': 'Wyloguj się',
     'DIALOG_LOGOUT_CONTENT': 'Czy na pewno chcesz się wylogować?',
     'DIALOG_CLEAR_HISTORY_TITLE': 'Wyczyść historię',
-    'DIALOG_CLEAR_HISTORY_CONTENT': 'Czy na pewno chcesz usunąć całą historię z tego urządzenia?',
+    'DIALOG_CLEAR_HISTORY_CONTENT':
+        'Czy na pewno chcesz usunąć całą historię z tego urządzenia?',
     'QUEUE_HEADER': 'Kolejka ({count})',
     'QUEUE_EMPTY': 'Kolejka jest pusta',
     'TOOLTIP_CLEAR_HISTORY': 'Wyczyść historię',
@@ -301,18 +310,40 @@ const Map<String, Map<String, String>> _translations = {
     'BATCH_ISSUE_ALL': 'Wydaj wszystko ({count})',
     'BATCH_ISSUED_COUNT': 'Wydane: {count}',
     'BATCH_ITEM_QTY_INCREASED': 'Produkt już na liście — zwiększono ilość',
+    'BATCH_QTY_DIALOG_TITLE': 'Ilość do wydania',
+    'BATCH_QTY_DIALOG_HINT': 'Ilość',
     'BATCH_VALIDATION_NAME_REQUIRED': 'Uzupełnij nazwy wszystkich produktów',
     'BATCH_PARTIAL_SUCCESS': 'Częściowy sukces',
     'BATCH_RESULT_MESSAGE': 'Wydano: {success}, błędy: {fail}',
     'BATCH_ADD_FROM_LIST': 'Wybierz z listy',
     'BATCH_PICK_PRODUCT': 'Wybierz produkt',
 
+    // ── Location (regał + półka) ──
+    'LOCATION_LABEL': 'Lokalizacja',
+    'LOCATION_RACK': 'Regał',
+    'LOCATION_SHELF': 'Półka',
+    'LOCATION_NONE': 'Brak lokalizacji',
+    'LOCATION_HINT_RACK': 'np. A, B, AB',
+    'LOCATION_HINT_SHELF': '0–99',
+    'LOCATION_VALIDATION_RACK': '1–2 wielkie litery (A–Z)',
+    'LOCATION_VALIDATION_SHELF': 'Liczba 0–99',
+    'LOCATION_VALIDATION_BOTH_REQUIRED':
+        'Podaj regał i półkę (lub wyczyść oba)',
+    'LOCATION_EDIT_TITLE': 'Lokalizacja produktu',
+    'LOCATION_LOOKUP_TITLE': 'Sprawdź lokalizację',
+    'LOCATION_LOOKUP_HINT': 'Wpisz lub zeskanuj kod produktu',
+    'LOCATION_LOOKUP_NOT_FOUND': 'Produkt o tym kodzie nie istnieje',
+    'LOCATION_SAVED': 'Lokalizacja zapisana',
+    'LOCATION_QUEUED': 'Zapisano w kolejce offline',
+    'LOCATION_CLEAR': 'Wyczyść lokalizację',
+    'STOCK_EDIT_LOCATION': 'Zmień lokalizację',
+    'TOOLTIP_CHECK_LOCATION': 'Sprawdź lokalizację produktu',
+
     // ── Logs ──
     'LOG_STOCK_IN': 'Przyjęcie',
     'LOG_STOCK_OUT': 'Wydanie',
     'LOG_LOGOUT': 'Wylogowano',
   },
-
   'en': {
     // ── App ──
     'APP_TITLE': 'Workshop - LogisticsERP',
@@ -476,7 +507,8 @@ const Map<String, Map<String, String>> _translations = {
     'OCR_NO_TEXT': 'No text recognized',
     'OCR_NO_CODES': 'No codes found in text',
     'OCR_RESULTS_TITLE': 'Recognized text ({count})',
-    'OCR_INSTRUCTION': 'Point camera at product code label\nand press the shutter button',
+    'OCR_INSTRUCTION':
+        'Point camera at product code label\nand press the shutter button',
     'OCR_PROCESSING': 'Recognizing text...',
     'OCR_TAKE_PHOTO': 'Take photo',
     'OCR_EDIT_INSTRUCTION': 'Edit text if needed, then select the code:',
@@ -488,21 +520,26 @@ const Map<String, Map<String, String>> _translations = {
     'SETTINGS_ABOUT_TITLE': 'Workshop',
     'SETTINGS_ABOUT_SUBTITLE': 'Workshop v1.0 — LogisticsERP',
     'SETTINGS_VERSION': 'Version 1.0',
-    'SETTINGS_ABOUT_DESCRIPTION': 'Workshop app integrated with LogisticsERP. Stock and repair management.',
-    'SETTINGS_ABOUT_FEATURES': 'Features:\n• Barcode scanning\n• Goods receipts and issues\n• Stock level checking\n• Adding repairs\n• License plate scanning\n• Offline mode with auto sync',
+    'SETTINGS_ABOUT_DESCRIPTION':
+        'Workshop app integrated with LogisticsERP. Stock and repair management.',
+    'SETTINGS_ABOUT_FEATURES':
+        'Features:\n• Barcode scanning\n• Goods receipts and issues\n• Stock level checking\n• Adding repairs\n• License plate scanning\n• Offline mode with auto sync',
     'SETTINGS_CHECKING_CONNECTION': 'Checking connection...',
     'STATUS_CONNECTED': 'Connected',
-    'STATUS_CONNECTED_DETAIL': 'Server {host} responds correctly.\nResponse time: OK',
+    'STATUS_CONNECTED_DETAIL':
+        'Server {host} responds correctly.\nResponse time: OK',
     'STATUS_SERVER_ERROR': 'Server error',
     'STATUS_SERVER_ERROR_DETAIL': 'Server responded with code: {code}',
     'STATUS_NO_CONNECTION': 'No connection',
-    'STATUS_NO_CONNECTION_DETAIL': 'Cannot connect to server {host}.\n\nCheck if device is on company WiFi.',
+    'STATUS_NO_CONNECTION_DETAIL':
+        'Cannot connect to server {host}.\n\nCheck if device is on company WiFi.',
     'SETTINGS_OFFLINE_QUEUE': 'Offline queue',
     'SETTINGS_LANGUAGE': 'Language',
     'SETTINGS_LANGUAGE_SUBTITLE': 'Change app language',
     'QUEUE_ALL_SYNCED': 'All synchronized',
     'QUEUE_NO_PENDING': 'No pending records',
-    'QUEUE_PENDING_INFO': 'Pending records will be sent automatically when WiFi is restored.',
+    'QUEUE_PENDING_INFO':
+        'Pending records will be sent automatically when WiFi is restored.',
     'QUEUE_SYNC_ATTEMPT': 'Attempting sync...',
     'SETTINGS_API_SERVER': 'API Server',
     'SETTINGS_OFFLINE_QUEUE_TILE': 'Offline queue',
@@ -544,12 +581,14 @@ const Map<String, Map<String, String>> _translations = {
     'DIALOG_ENTER_CODE_HINT': 'e.g. 5901234123457 or 2VP340961-111',
     'DIALOG_ENTER_CODE_HELPER': 'Barcode or product code',
     'DIALOG_QUEUED_TITLE': 'Saved to queue',
-    'DIALOG_QUEUED_CONTENT': 'No server connection. Movement will be sent automatically when WiFi returns.',
+    'DIALOG_QUEUED_CONTENT':
+        'No server connection. Movement will be sent automatically when WiFi returns.',
     'DIALOG_SUCCESS_TITLE': 'Success!',
     'DIALOG_LOGOUT_TITLE': 'Sign out',
     'DIALOG_LOGOUT_CONTENT': 'Are you sure you want to sign out?',
     'DIALOG_CLEAR_HISTORY_TITLE': 'Clear history',
-    'DIALOG_CLEAR_HISTORY_CONTENT': 'Are you sure you want to delete all history from this device?',
+    'DIALOG_CLEAR_HISTORY_CONTENT':
+        'Are you sure you want to delete all history from this device?',
     'QUEUE_HEADER': 'Queue ({count})',
     'QUEUE_EMPTY': 'Queue is empty',
     'TOOLTIP_CLEAR_HISTORY': 'Clear history',
@@ -576,18 +615,39 @@ const Map<String, Map<String, String>> _translations = {
     'BATCH_ISSUE_ALL': 'Issue all ({count})',
     'BATCH_ISSUED_COUNT': 'Issued: {count}',
     'BATCH_ITEM_QTY_INCREASED': 'Product already in list — quantity increased',
+    'BATCH_QTY_DIALOG_TITLE': 'Quantity to issue',
+    'BATCH_QTY_DIALOG_HINT': 'Quantity',
     'BATCH_VALIDATION_NAME_REQUIRED': 'Fill in names for all products',
     'BATCH_PARTIAL_SUCCESS': 'Partial success',
     'BATCH_RESULT_MESSAGE': 'Issued: {success}, errors: {fail}',
     'BATCH_ADD_FROM_LIST': 'Pick from list',
     'BATCH_PICK_PRODUCT': 'Select product',
 
+    // ── Location (rack + shelf) ──
+    'LOCATION_LABEL': 'Location',
+    'LOCATION_RACK': 'Rack',
+    'LOCATION_SHELF': 'Shelf',
+    'LOCATION_NONE': 'No location',
+    'LOCATION_HINT_RACK': 'e.g. A, B, AB',
+    'LOCATION_HINT_SHELF': '0–99',
+    'LOCATION_VALIDATION_RACK': '1–2 uppercase letters (A–Z)',
+    'LOCATION_VALIDATION_SHELF': 'Number 0–99',
+    'LOCATION_VALIDATION_BOTH_REQUIRED': 'Enter rack and shelf (or clear both)',
+    'LOCATION_EDIT_TITLE': 'Product location',
+    'LOCATION_LOOKUP_TITLE': 'Check location',
+    'LOCATION_LOOKUP_HINT': 'Type or scan a product code',
+    'LOCATION_LOOKUP_NOT_FOUND': 'No product with this code',
+    'LOCATION_SAVED': 'Location saved',
+    'LOCATION_QUEUED': 'Queued for offline sync',
+    'LOCATION_CLEAR': 'Clear location',
+    'STOCK_EDIT_LOCATION': 'Edit location',
+    'TOOLTIP_CHECK_LOCATION': 'Check product location',
+
     // ── Logs ──
     'LOG_STOCK_IN': 'Receipt',
     'LOG_STOCK_OUT': 'Issue',
     'LOG_LOGOUT': 'Signed out',
   },
-
   'uk': {
     // ── App ──
     'APP_TITLE': 'Майстерня - LogisticsERP',
@@ -751,7 +811,8 @@ const Map<String, Map<String, String>> _translations = {
     'OCR_NO_TEXT': 'Текст не розпізнано',
     'OCR_NO_CODES': 'Кодів у тексті не знайдено',
     'OCR_RESULTS_TITLE': 'Розпізнаний текст ({count})',
-    'OCR_INSTRUCTION': 'Наведіть камеру на етикетку з кодом\nта натисніть кнопку зйомки',
+    'OCR_INSTRUCTION':
+        'Наведіть камеру на етикетку з кодом\nта натисніть кнопку зйомки',
     'OCR_PROCESSING': 'Розпізнаю текст...',
     'OCR_TAKE_PHOTO': 'Зробити фото',
     'OCR_EDIT_INSTRUCTION': 'Виправте текст за потреби, потім оберіть код:',
@@ -763,21 +824,26 @@ const Map<String, Map<String, String>> _translations = {
     'SETTINGS_ABOUT_TITLE': 'Майстерня',
     'SETTINGS_ABOUT_SUBTITLE': 'Майстерня v1.0 — LogisticsERP',
     'SETTINGS_VERSION': 'Версія 1.0',
-    'SETTINGS_ABOUT_DESCRIPTION': 'Додаток майстерні інтегрований з LogisticsERP. Управління складом та ремонтами.',
-    'SETTINGS_ABOUT_FEATURES': 'Функції:\n• Сканування штрих-кодів\n• Прийом та видача товарів\n• Перегляд залишків\n• Додавання ремонтів\n• Сканування номерних знаків\n• Офлайн-режим з автосинхронізацією',
+    'SETTINGS_ABOUT_DESCRIPTION':
+        'Додаток майстерні інтегрований з LogisticsERP. Управління складом та ремонтами.',
+    'SETTINGS_ABOUT_FEATURES':
+        'Функції:\n• Сканування штрих-кодів\n• Прийом та видача товарів\n• Перегляд залишків\n• Додавання ремонтів\n• Сканування номерних знаків\n• Офлайн-режим з автосинхронізацією',
     'SETTINGS_CHECKING_CONNECTION': 'Перевірка з\'єднання...',
     'STATUS_CONNECTED': 'Під\'єднано',
-    'STATUS_CONNECTED_DETAIL': 'Сервер {host} відповідає коректно.\nЧас відповіді: OK',
+    'STATUS_CONNECTED_DETAIL':
+        'Сервер {host} відповідає коректно.\nЧас відповіді: OK',
     'STATUS_SERVER_ERROR': 'Помилка сервера',
     'STATUS_SERVER_ERROR_DETAIL': 'Сервер відповів кодом: {code}',
     'STATUS_NO_CONNECTION': 'Немає з\'єднання',
-    'STATUS_NO_CONNECTION_DETAIL': 'Не вдається з\'єднатися з сервером {host}.\n\nПеревірте чи пристрій у мережі WiFi компанії.',
+    'STATUS_NO_CONNECTION_DETAIL':
+        'Не вдається з\'єднатися з сервером {host}.\n\nПеревірте чи пристрій у мережі WiFi компанії.',
     'SETTINGS_OFFLINE_QUEUE': 'Офлайн-черга',
     'SETTINGS_LANGUAGE': 'Мова',
     'SETTINGS_LANGUAGE_SUBTITLE': 'Змінити мову додатку',
     'QUEUE_ALL_SYNCED': 'Все синхронізовано',
     'QUEUE_NO_PENDING': 'Немає очікуючих записів',
-    'QUEUE_PENDING_INFO': 'Очікуючі записи будуть надіслані автоматично при відновленні WiFi.',
+    'QUEUE_PENDING_INFO':
+        'Очікуючі записи будуть надіслані автоматично при відновленні WiFi.',
     'QUEUE_SYNC_ATTEMPT': 'Спроба синхронізації...',
     'SETTINGS_API_SERVER': 'Сервер API',
     'SETTINGS_OFFLINE_QUEUE_TILE': 'Офлайн-черга',
@@ -819,12 +885,14 @@ const Map<String, Map<String, String>> _translations = {
     'DIALOG_ENTER_CODE_HINT': 'напр. 5901234123457 або 2VP340961-111',
     'DIALOG_ENTER_CODE_HELPER': 'Штрих-код або код товару',
     'DIALOG_QUEUED_TITLE': 'Збережено в черзі',
-    'DIALOG_QUEUED_CONTENT': 'Немає з\'єднання з сервером. Рух буде надіслано автоматично при відновленні WiFi.',
+    'DIALOG_QUEUED_CONTENT':
+        'Немає з\'єднання з сервером. Рух буде надіслано автоматично при відновленні WiFi.',
     'DIALOG_SUCCESS_TITLE': 'Успіх!',
     'DIALOG_LOGOUT_TITLE': 'Вийти',
     'DIALOG_LOGOUT_CONTENT': 'Ви впевнені що хочете вийти?',
     'DIALOG_CLEAR_HISTORY_TITLE': 'Очистити історію',
-    'DIALOG_CLEAR_HISTORY_CONTENT': 'Ви впевнені що хочете видалити всю історію з цього пристрою?',
+    'DIALOG_CLEAR_HISTORY_CONTENT':
+        'Ви впевнені що хочете видалити всю історію з цього пристрою?',
     'QUEUE_HEADER': 'Черга ({count})',
     'QUEUE_EMPTY': 'Черга порожня',
     'TOOLTIP_CLEAR_HISTORY': 'Очистити історію',
@@ -851,18 +919,40 @@ const Map<String, Map<String, String>> _translations = {
     'BATCH_ISSUE_ALL': 'Видати все ({count})',
     'BATCH_ISSUED_COUNT': 'Видано: {count}',
     'BATCH_ITEM_QTY_INCREASED': 'Товар вже у списку — кількість збільшено',
+    'BATCH_QTY_DIALOG_TITLE': 'Кількість для видачі',
+    'BATCH_QTY_DIALOG_HINT': 'Кількість',
     'BATCH_VALIDATION_NAME_REQUIRED': 'Заповніть назви всіх товарів',
     'BATCH_PARTIAL_SUCCESS': 'Частковий успіх',
     'BATCH_RESULT_MESSAGE': 'Видано: {success}, помилки: {fail}',
     'BATCH_ADD_FROM_LIST': 'Вибрати зі списку',
     'BATCH_PICK_PRODUCT': 'Виберіть товар',
 
+    // ── Location (стелаж + полиця) ──
+    'LOCATION_LABEL': 'Розташування',
+    'LOCATION_RACK': 'Стелаж',
+    'LOCATION_SHELF': 'Полиця',
+    'LOCATION_NONE': 'Без розташування',
+    'LOCATION_HINT_RACK': 'напр. A, B, AB',
+    'LOCATION_HINT_SHELF': '0–99',
+    'LOCATION_VALIDATION_RACK': '1–2 великі літери (A–Z)',
+    'LOCATION_VALIDATION_SHELF': 'Число 0–99',
+    'LOCATION_VALIDATION_BOTH_REQUIRED':
+        'Вкажіть стелаж і полицю (або очистіть обидва)',
+    'LOCATION_EDIT_TITLE': 'Розташування товару',
+    'LOCATION_LOOKUP_TITLE': 'Перевірити розташування',
+    'LOCATION_LOOKUP_HINT': 'Введіть або відскануйте код товару',
+    'LOCATION_LOOKUP_NOT_FOUND': 'Товар з таким кодом не існує',
+    'LOCATION_SAVED': 'Розташування збережено',
+    'LOCATION_QUEUED': 'Збережено в офлайн-черзі',
+    'LOCATION_CLEAR': 'Очистити розташування',
+    'STOCK_EDIT_LOCATION': 'Змінити розташування',
+    'TOOLTIP_CHECK_LOCATION': 'Перевірити розташування товару',
+
     // ── Logs ──
     'LOG_STOCK_IN': 'Прийом',
     'LOG_STOCK_OUT': 'Видача',
     'LOG_LOGOUT': 'Вийшов',
   },
-
   'ru': {
     // ── App ──
     'APP_TITLE': 'Мастерская - LogisticsERP',
@@ -939,7 +1029,8 @@ const Map<String, Map<String, String>> _translations = {
     'LABEL_PRODUCT_NAME': 'Название товара',
     'HINT_PRODUCT_NAME': 'Введите название товара...',
     'VALIDATION_PRODUCT_NAME_REQUIRED': 'Введите название товара',
-    'VALIDATION_PRODUCT_NAME_MIN_LENGTH': 'Название должно быть не менее 2 символов',
+    'VALIDATION_PRODUCT_NAME_MIN_LENGTH':
+        'Название должно быть не менее 2 символов',
 
     // ── Manual product ──
     'MANUAL_TITLE': 'Добавить товар вручную',
@@ -1026,10 +1117,12 @@ const Map<String, Map<String, String>> _translations = {
     'OCR_NO_TEXT': 'Текст не распознан',
     'OCR_NO_CODES': 'Кодов в тексте не найдено',
     'OCR_RESULTS_TITLE': 'Распознанный текст ({count})',
-    'OCR_INSTRUCTION': 'Наведите камеру на этикетку с кодом\nи нажмите кнопку съёмки',
+    'OCR_INSTRUCTION':
+        'Наведите камеру на этикетку с кодом\nи нажмите кнопку съёмки',
     'OCR_PROCESSING': 'Распознаю текст...',
     'OCR_TAKE_PHOTO': 'Сделать фото',
-    'OCR_EDIT_INSTRUCTION': 'Исправьте текст при необходимости, затем выберите код:',
+    'OCR_EDIT_INSTRUCTION':
+        'Исправьте текст при необходимости, затем выберите код:',
     'OCR_USE_CODE': 'Использовать этот код',
 
     // ── Settings ──
@@ -1038,21 +1131,26 @@ const Map<String, Map<String, String>> _translations = {
     'SETTINGS_ABOUT_TITLE': 'Мастерская',
     'SETTINGS_ABOUT_SUBTITLE': 'Мастерская v1.0 — LogisticsERP',
     'SETTINGS_VERSION': 'Версия 1.0',
-    'SETTINGS_ABOUT_DESCRIPTION': 'Приложение мастерской интегрировано с LogisticsERP. Управление складом и ремонтами.',
-    'SETTINGS_ABOUT_FEATURES': 'Функции:\n• Сканирование штрих-кодов\n• Приём и выдача товаров\n• Просмотр остатков\n• Добавление ремонтов\n• Сканирование номерных знаков\n• Офлайн-режим с автосинхронизацией',
+    'SETTINGS_ABOUT_DESCRIPTION':
+        'Приложение мастерской интегрировано с LogisticsERP. Управление складом и ремонтами.',
+    'SETTINGS_ABOUT_FEATURES':
+        'Функции:\n• Сканирование штрих-кодов\n• Приём и выдача товаров\n• Просмотр остатков\n• Добавление ремонтов\n• Сканирование номерных знаков\n• Офлайн-режим с автосинхронизацией',
     'SETTINGS_CHECKING_CONNECTION': 'Проверка соединения...',
     'STATUS_CONNECTED': 'Подключено',
-    'STATUS_CONNECTED_DETAIL': 'Сервер {host} отвечает корректно.\nВремя ответа: OK',
+    'STATUS_CONNECTED_DETAIL':
+        'Сервер {host} отвечает корректно.\nВремя ответа: OK',
     'STATUS_SERVER_ERROR': 'Ошибка сервера',
     'STATUS_SERVER_ERROR_DETAIL': 'Сервер ответил кодом: {code}',
     'STATUS_NO_CONNECTION': 'Нет соединения',
-    'STATUS_NO_CONNECTION_DETAIL': 'Не удаётся подключиться к серверу {host}.\n\nПроверьте находится ли устройство в сети WiFi компании.',
+    'STATUS_NO_CONNECTION_DETAIL':
+        'Не удаётся подключиться к серверу {host}.\n\nПроверьте находится ли устройство в сети WiFi компании.',
     'SETTINGS_OFFLINE_QUEUE': 'Офлайн-очередь',
     'SETTINGS_LANGUAGE': 'Язык',
     'SETTINGS_LANGUAGE_SUBTITLE': 'Изменить язык приложения',
     'QUEUE_ALL_SYNCED': 'Всё синхронизировано',
     'QUEUE_NO_PENDING': 'Нет ожидающих записей',
-    'QUEUE_PENDING_INFO': 'Ожидающие записи будут отправлены автоматически при восстановлении WiFi.',
+    'QUEUE_PENDING_INFO':
+        'Ожидающие записи будут отправлены автоматически при восстановлении WiFi.',
     'QUEUE_SYNC_ATTEMPT': 'Попытка синхронизации...',
     'SETTINGS_API_SERVER': 'Сервер API',
     'SETTINGS_OFFLINE_QUEUE_TILE': 'Офлайн-очередь',
@@ -1094,12 +1192,14 @@ const Map<String, Map<String, String>> _translations = {
     'DIALOG_ENTER_CODE_HINT': 'напр. 5901234123457 или 2VP340961-111',
     'DIALOG_ENTER_CODE_HELPER': 'Штрих-код или код товара',
     'DIALOG_QUEUED_TITLE': 'Сохранено в очереди',
-    'DIALOG_QUEUED_CONTENT': 'Нет соединения с сервером. Движение будет отправлено автоматически при восстановлении WiFi.',
+    'DIALOG_QUEUED_CONTENT':
+        'Нет соединения с сервером. Движение будет отправлено автоматически при восстановлении WiFi.',
     'DIALOG_SUCCESS_TITLE': 'Успех!',
     'DIALOG_LOGOUT_TITLE': 'Выйти',
     'DIALOG_LOGOUT_CONTENT': 'Вы уверены что хотите выйти?',
     'DIALOG_CLEAR_HISTORY_TITLE': 'Очистить историю',
-    'DIALOG_CLEAR_HISTORY_CONTENT': 'Вы уверены что хотите удалить всю историю с этого устройства?',
+    'DIALOG_CLEAR_HISTORY_CONTENT':
+        'Вы уверены что хотите удалить всю историю с этого устройства?',
     'QUEUE_HEADER': 'Очередь ({count})',
     'QUEUE_EMPTY': 'Очередь пуста',
     'TOOLTIP_CLEAR_HISTORY': 'Очистить историю',
@@ -1121,23 +1221,46 @@ const Map<String, Map<String, String>> _translations = {
     'BATCH_ISSUE_TITLE': 'Пакетная выдача',
     'BATCH_COMMON_SETTINGS': 'Настройки выдачи',
     'BATCH_ITEMS_LIST': 'Позиции для выдачи',
-    'BATCH_EMPTY_LIST': 'Добавьте товары сканированием\nили введите код вручную',
+    'BATCH_EMPTY_LIST':
+        'Добавьте товары сканированием\nили введите код вручную',
     'BATCH_SCAN_ADD': 'Сканировать',
     'BATCH_ISSUE_ALL': 'Выдать всё ({count})',
     'BATCH_ISSUED_COUNT': 'Выдано: {count}',
     'BATCH_ITEM_QTY_INCREASED': 'Товар уже в списке — количество увеличено',
+    'BATCH_QTY_DIALOG_TITLE': 'Количество для выдачи',
+    'BATCH_QTY_DIALOG_HINT': 'Количество',
     'BATCH_VALIDATION_NAME_REQUIRED': 'Заполните названия всех товаров',
     'BATCH_PARTIAL_SUCCESS': 'Частичный успех',
     'BATCH_RESULT_MESSAGE': 'Выдано: {success}, ошибки: {fail}',
     'BATCH_ADD_FROM_LIST': 'Выбрать из списка',
     'BATCH_PICK_PRODUCT': 'Выберите товар',
 
+    // ── Location (стеллаж + полка) ──
+    'LOCATION_LABEL': 'Расположение',
+    'LOCATION_RACK': 'Стеллаж',
+    'LOCATION_SHELF': 'Полка',
+    'LOCATION_NONE': 'Без расположения',
+    'LOCATION_HINT_RACK': 'напр. A, B, AB',
+    'LOCATION_HINT_SHELF': '0–99',
+    'LOCATION_VALIDATION_RACK': '1–2 заглавные буквы (A–Z)',
+    'LOCATION_VALIDATION_SHELF': 'Число 0–99',
+    'LOCATION_VALIDATION_BOTH_REQUIRED':
+        'Укажите стеллаж и полку (или очистите оба)',
+    'LOCATION_EDIT_TITLE': 'Расположение товара',
+    'LOCATION_LOOKUP_TITLE': 'Проверить расположение',
+    'LOCATION_LOOKUP_HINT': 'Введите или отсканируйте код товара',
+    'LOCATION_LOOKUP_NOT_FOUND': 'Товар с таким кодом не существует',
+    'LOCATION_SAVED': 'Расположение сохранено',
+    'LOCATION_QUEUED': 'Сохранено в офлайн-очереди',
+    'LOCATION_CLEAR': 'Очистить расположение',
+    'STOCK_EDIT_LOCATION': 'Изменить расположение',
+    'TOOLTIP_CHECK_LOCATION': 'Проверить расположение товара',
+
     // ── Logs ──
     'LOG_STOCK_IN': 'Приём',
     'LOG_STOCK_OUT': 'Выдача',
     'LOG_LOGOUT': 'Вышел',
   },
-
   'ka': {
     // ── App ──
     'APP_TITLE': 'სახელოსნო - LogisticsERP',
@@ -1301,10 +1424,12 @@ const Map<String, Map<String, String>> _translations = {
     'OCR_NO_TEXT': 'ტექსტი ვერ ამოიცნო',
     'OCR_NO_CODES': 'ტექსტში კოდები ვერ მოიძებნა',
     'OCR_RESULTS_TITLE': 'ამოცნობილი ტექსტი ({count})',
-    'OCR_INSTRUCTION': 'მიმართეთ კამერა პროდუქტის კოდის ეტიკეტისკენ\nდა დააჭირეთ ფოტოს ღილაკს',
+    'OCR_INSTRUCTION':
+        'მიმართეთ კამერა პროდუქტის კოდის ეტიკეტისკენ\nდა დააჭირეთ ფოტოს ღილაკს',
     'OCR_PROCESSING': 'ტექსტის ამოცნობა...',
     'OCR_TAKE_PHOTO': 'ფოტოს გადაღება',
-    'OCR_EDIT_INSTRUCTION': 'საჭიროებისამებრ შეასწორეთ ტექსტი, შემდეგ აირჩიეთ კოდი:',
+    'OCR_EDIT_INSTRUCTION':
+        'საჭიროებისამებრ შეასწორეთ ტექსტი, შემდეგ აირჩიეთ კოდი:',
     'OCR_USE_CODE': 'ამ კოდის გამოყენება',
 
     // ── Settings ──
@@ -1313,21 +1438,26 @@ const Map<String, Map<String, String>> _translations = {
     'SETTINGS_ABOUT_TITLE': 'სახელოსნო',
     'SETTINGS_ABOUT_SUBTITLE': 'სახელოსნო v1.0 — LogisticsERP',
     'SETTINGS_VERSION': 'ვერსია 1.0',
-    'SETTINGS_ABOUT_DESCRIPTION': 'სახელოსნოს აპლიკაცია ინტეგრირებულია LogisticsERP-თან. საწყობისა და შეკეთებების მართვა.',
-    'SETTINGS_ABOUT_FEATURES': 'ფუნქციები:\n• შტრიხ-კოდების სკანირება\n• საქონლის მიღება და გაცემა\n• ნაშთების ნახვა\n• შეკეთებების დამატება\n• სანომრე ნიშნების სკანირება\n• ოფლაინ-რეჟიმი ავტოსინქრონიზაციით',
+    'SETTINGS_ABOUT_DESCRIPTION':
+        'სახელოსნოს აპლიკაცია ინტეგრირებულია LogisticsERP-თან. საწყობისა და შეკეთებების მართვა.',
+    'SETTINGS_ABOUT_FEATURES':
+        'ფუნქციები:\n• შტრიხ-კოდების სკანირება\n• საქონლის მიღება და გაცემა\n• ნაშთების ნახვა\n• შეკეთებების დამატება\n• სანომრე ნიშნების სკანირება\n• ოფლაინ-რეჟიმი ავტოსინქრონიზაციით',
     'SETTINGS_CHECKING_CONNECTION': 'კავშირის შემოწმება...',
     'STATUS_CONNECTED': 'დაკავშირებულია',
-    'STATUS_CONNECTED_DETAIL': 'სერვერი {host} სწორად პასუხობს.\nპასუხის დრო: OK',
+    'STATUS_CONNECTED_DETAIL':
+        'სერვერი {host} სწორად პასუხობს.\nპასუხის დრო: OK',
     'STATUS_SERVER_ERROR': 'სერვერის შეცდომა',
     'STATUS_SERVER_ERROR_DETAIL': 'სერვერმა უპასუხა კოდით: {code}',
     'STATUS_NO_CONNECTION': 'კავშირი არ არის',
-    'STATUS_NO_CONNECTION_DETAIL': 'სერვერთან {host} დაკავშირება ვერ ხერხდება.\n\nშეამოწმეთ არის თუ არა მოწყობილობა კომპანიის WiFi ქსელში.',
+    'STATUS_NO_CONNECTION_DETAIL':
+        'სერვერთან {host} დაკავშირება ვერ ხერხდება.\n\nშეამოწმეთ არის თუ არა მოწყობილობა კომპანიის WiFi ქსელში.',
     'SETTINGS_OFFLINE_QUEUE': 'ოფლაინ-რიგი',
     'SETTINGS_LANGUAGE': 'ენა',
     'SETTINGS_LANGUAGE_SUBTITLE': 'აპლიკაციის ენის შეცვლა',
     'QUEUE_ALL_SYNCED': 'ყველაფერი სინქრონიზებულია',
     'QUEUE_NO_PENDING': 'მომლოდინე ჩანაწერები არ არის',
-    'QUEUE_PENDING_INFO': 'მომლოდინე ჩანაწერები ავტომატურად გაიგზავნება WiFi-ს აღდგენისას.',
+    'QUEUE_PENDING_INFO':
+        'მომლოდინე ჩანაწერები ავტომატურად გაიგზავნება WiFi-ს აღდგენისას.',
     'QUEUE_SYNC_ATTEMPT': 'სინქრონიზაციის მცდელობა...',
     'SETTINGS_API_SERVER': 'API სერვერი',
     'SETTINGS_OFFLINE_QUEUE_TILE': 'ოფლაინ-რიგი',
@@ -1369,12 +1499,14 @@ const Map<String, Map<String, String>> _translations = {
     'DIALOG_ENTER_CODE_HINT': 'მაგ. 5901234123457 ან 2VP340961-111',
     'DIALOG_ENTER_CODE_HELPER': 'შტრიხ-კოდი ან პროდუქტის კოდი',
     'DIALOG_QUEUED_TITLE': 'რიგში შენახულია',
-    'DIALOG_QUEUED_CONTENT': 'სერვერთან კავშირი არ არის. მოძრაობა ავტომატურად გაიგზავნება WiFi-ს დაბრუნებისას.',
+    'DIALOG_QUEUED_CONTENT':
+        'სერვერთან კავშირი არ არის. მოძრაობა ავტომატურად გაიგზავნება WiFi-ს დაბრუნებისას.',
     'DIALOG_SUCCESS_TITLE': 'წარმატება!',
     'DIALOG_LOGOUT_TITLE': 'გასვლა',
     'DIALOG_LOGOUT_CONTENT': 'დარწმუნებული ხართ რომ გსურთ გასვლა?',
     'DIALOG_CLEAR_HISTORY_TITLE': 'ისტორიის გასუფთავება',
-    'DIALOG_CLEAR_HISTORY_CONTENT': 'დარწმუნებული ხართ რომ გსურთ ამ მოწყობილობის მთელი ისტორიის წაშლა?',
+    'DIALOG_CLEAR_HISTORY_CONTENT':
+        'დარწმუნებული ხართ რომ გსურთ ამ მოწყობილობის მთელი ისტორიის წაშლა?',
     'QUEUE_HEADER': 'რიგი ({count})',
     'QUEUE_EMPTY': 'რიგი ცარიელია',
     'TOOLTIP_CLEAR_HISTORY': 'ისტორიის გასუფთავება',
@@ -1396,16 +1528,40 @@ const Map<String, Map<String, String>> _translations = {
     'BATCH_ISSUE_TITLE': 'პაკეტური გაცემა',
     'BATCH_COMMON_SETTINGS': 'გაცემის პარამეტრები',
     'BATCH_ITEMS_LIST': 'გასაცემი პოზიციები',
-    'BATCH_EMPTY_LIST': 'დაამატეთ პროდუქტები სკანირებით\nან შეიყვანეთ კოდი ხელით',
+    'BATCH_EMPTY_LIST':
+        'დაამატეთ პროდუქტები სკანირებით\nან შეიყვანეთ კოდი ხელით',
     'BATCH_SCAN_ADD': 'სკანირება',
     'BATCH_ISSUE_ALL': 'ყველას გაცემა ({count})',
     'BATCH_ISSUED_COUNT': 'გაცემული: {count}',
     'BATCH_ITEM_QTY_INCREASED': 'პროდუქტი უკვე სიაშია — რაოდენობა გაიზარდა',
+    'BATCH_QTY_DIALOG_TITLE': 'გასაცემი რაოდენობა',
+    'BATCH_QTY_DIALOG_HINT': 'რაოდენობა',
     'BATCH_VALIDATION_NAME_REQUIRED': 'შეავსეთ ყველა პროდუქტის სახელი',
     'BATCH_PARTIAL_SUCCESS': 'ნაწილობრივი წარმატება',
     'BATCH_RESULT_MESSAGE': 'გაცემული: {success}, შეცდომები: {fail}',
     'BATCH_ADD_FROM_LIST': 'სიიდან არჩევა',
     'BATCH_PICK_PRODUCT': 'აირჩიეთ პროდუქტი',
+
+    // ── Location (სტელაჟი + თარო) ──
+    'LOCATION_LABEL': 'მდებარეობა',
+    'LOCATION_RACK': 'სტელაჟი',
+    'LOCATION_SHELF': 'თარო',
+    'LOCATION_NONE': 'მდებარეობა არ არის',
+    'LOCATION_HINT_RACK': 'მაგ. A, B, AB',
+    'LOCATION_HINT_SHELF': '0–99',
+    'LOCATION_VALIDATION_RACK': '1–2 დიდი ასო (A–Z)',
+    'LOCATION_VALIDATION_SHELF': 'რიცხვი 0–99',
+    'LOCATION_VALIDATION_BOTH_REQUIRED':
+        'მიუთითეთ სტელაჟი და თარო (ან გაასუფთავეთ ორივე)',
+    'LOCATION_EDIT_TITLE': 'პროდუქტის მდებარეობა',
+    'LOCATION_LOOKUP_TITLE': 'მდებარეობის შემოწმება',
+    'LOCATION_LOOKUP_HINT': 'შეიყვანეთ ან დაასკანირეთ პროდუქტის კოდი',
+    'LOCATION_LOOKUP_NOT_FOUND': 'ამ კოდით პროდუქტი ვერ მოიძებნა',
+    'LOCATION_SAVED': 'მდებარეობა შენახულია',
+    'LOCATION_QUEUED': 'შენახული ოფლაინ-რიგში',
+    'LOCATION_CLEAR': 'მდებარეობის გასუფთავება',
+    'STOCK_EDIT_LOCATION': 'მდებარეობის შეცვლა',
+    'TOOLTIP_CHECK_LOCATION': 'პროდუქტის მდებარეობის შემოწმება',
 
     // ── Logs ──
     'LOG_STOCK_IN': 'მიღება',
