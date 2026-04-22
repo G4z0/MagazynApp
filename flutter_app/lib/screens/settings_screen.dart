@@ -15,6 +15,7 @@ class SettingsScreen extends StatelessWidget {
   static const Color accent = Color(0xFF3498DB);
   static const Color _secondaryText = Color(0xFFA0A5B1);
   static const String _serverHost = '192.168.1.42';
+  static const String _appVersion = '1.3.0+5';
 
   void _showAbout(BuildContext context) {
     showDialog(
@@ -35,7 +36,7 @@ class SettingsScreen extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(tr('SETTINGS_VERSION'),
+            Text(tr('SETTINGS_VERSION', args: {'version': _appVersion}),
                 style: const TextStyle(color: _secondaryText, fontSize: 14)),
             const SizedBox(height: 8),
             Text(
@@ -71,8 +72,10 @@ class SettingsScreen extends StatelessWidget {
           children: [
             const CircularProgressIndicator(color: accent),
             const SizedBox(width: 20),
-            Text(tr('SETTINGS_CHECKING_CONNECTION'),
-                style: const TextStyle(color: Colors.white)),
+            Flexible(
+              child: Text(tr('SETTINGS_CHECKING_CONNECTION'),
+                  style: const TextStyle(color: Colors.white)),
+            ),
           ],
         ),
       ),
@@ -130,12 +133,12 @@ class SettingsScreen extends StatelessWidget {
                 color: Colors.white.withAlpha(10),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Row(
+              child: const Row(
                 children: [
-                  const Icon(Icons.dns, color: _secondaryText, size: 18),
-                  const SizedBox(width: 8),
+                  Icon(Icons.dns, color: _secondaryText, size: 18),
+                  SizedBox(width: 8),
                   Text('http://$_serverHost',
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: _secondaryText,
                           fontSize: 12,
                           fontFamily: 'monospace')),
@@ -248,15 +251,47 @@ class SettingsScreen extends StatelessWidget {
                   separatorBuilder: (_, __) => const SizedBox(height: 6),
                   itemBuilder: (_, i) {
                     final item = items[i];
-                    final type = item['movement_type'] == 'in'
+                    final actionType =
+                      item['action_type'] as String? ?? 'save_product';
+                    late final String type;
+                    late final IconData icon;
+                    late final Color color;
+                    late final String subtitle;
+
+                    if (actionType == 'set_location') {
+                      type = tr('LOCATION_EDIT_TITLE');
+                      icon = Icons.pin_drop;
+                      color = accent;
+                      final rack = item['location_rack'] as String?;
+                      final shelf = item['location_shelf'];
+                      final suffix = (rack != null && shelf != null)
+                        ? '$rack$shelf'
+                        : tr('LOCATION_CLEAR');
+                      subtitle = '$suffix — ${item['barcode']}';
+                    } else if (actionType == 'set_min_quantity') {
+                      type = tr('LABEL_MIN_STOCK');
+                      icon = Icons.warning_amber;
+                      color = Colors.orange;
+                      final minQuantity = item['min_quantity'];
+                      final unit = item['unit'] ?? 'szt';
+                      final valueText = minQuantity == null
+                        ? tr('MIN_STOCK_NOT_SET')
+                        : '$minQuantity $unit';
+                      subtitle = '$valueText — ${item['barcode']}';
+                    } else {
+                      type = item['movement_type'] == 'in'
                         ? tr('LOG_STOCK_IN')
                         : tr('LOG_STOCK_OUT');
-                    final icon = item['movement_type'] == 'in'
+                      icon = item['movement_type'] == 'in'
                         ? Icons.add_circle
                         : Icons.remove_circle;
-                    final color = item['movement_type'] == 'in'
+                      color = item['movement_type'] == 'in'
                         ? Colors.green
                         : Colors.orange;
+                      subtitle =
+                        '${item['quantity']} ${item['unit']} — ${item['barcode']}';
+                    }
+
                     return Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
@@ -272,7 +307,9 @@ class SettingsScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '$type: ${item['product_name'] ?? '?'}',
+                                  actionType == 'save_product'
+                                      ? '$type: ${item['product_name'] ?? '?'}'
+                                      : '$type: ${item['barcode'] ?? '?'}',
                                   style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 13,
@@ -281,7 +318,7 @@ class SettingsScreen extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
-                                  '${item['quantity']} ${item['unit']} — ${item['barcode']}',
+                                  subtitle,
                                   style: const TextStyle(
                                       color: _secondaryText, fontSize: 11),
                                 ),
@@ -508,7 +545,8 @@ class SettingsScreen extends StatelessWidget {
           _SettingsTile(
             icon: Icons.info_outline,
             label: tr('SETTINGS_ABOUT'),
-            subtitle: tr('SETTINGS_ABOUT_SUBTITLE'),
+            subtitle:
+                tr('SETTINGS_ABOUT_SUBTITLE', args: {'version': _appVersion}),
             onTap: () => _showAbout(context),
           ),
           _SettingsTile(

@@ -187,10 +187,12 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text(tr('BUTTON_CANCEL')),
+                child: Text(tr('BUTTON_CANCEL'),
+                    style: const TextStyle(color: Colors.white54)),
               ),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: _accent),
+                style: FilledButton.styleFrom(
+                    backgroundColor: _accent, foregroundColor: Colors.white),
                 onPressed: () {
                   final parsed =
                       double.tryParse(controller.text.replaceAll(',', '.'));

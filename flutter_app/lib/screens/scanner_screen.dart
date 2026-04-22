@@ -22,6 +22,9 @@ class ScannerScreen extends StatefulWidget {
 }
 
 class _ScannerScreenState extends State<ScannerScreen> {
+  static const Color _cardBg = Color(0xFF2C2F3A);
+  static const Color _inputBg = Color(0xFF23262E);
+  static const Color _accent = Color(0xFF3498DB);
   MobileScannerController? _controller;
 
   // Wykryty kod — czeka na potwierdzenie użytkownika
@@ -413,25 +416,38 @@ class _ScannerScreenState extends State<ScannerScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(tr('DIALOG_ENTER_CODE_TITLE')),
+        backgroundColor: _cardBg,
+        title: Text(tr('DIALOG_ENTER_CODE_TITLE'),
+            style: const TextStyle(color: Colors.white)),
         content: TextField(
           controller: textController,
           autofocus: true,
           keyboardType: TextInputType.text,
           textCapitalization: TextCapitalization.characters,
+          style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: tr('DIALOG_ENTER_CODE_HINT'),
-            border: const OutlineInputBorder(),
-            prefixIcon: const Icon(Icons.qr_code),
+            hintStyle: const TextStyle(color: Colors.white38),
+            filled: true,
+            fillColor: _inputBg,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+            prefixIcon: const Icon(Icons.qr_code, color: _accent),
             helperText: tr('DIALOG_ENTER_CODE_HELPER'),
+            helperStyle: const TextStyle(color: Colors.white38),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(tr('BUTTON_CANCEL')),
+            child: Text(tr('BUTTON_CANCEL'),
+                style: const TextStyle(color: Colors.white54)),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: _accent, foregroundColor: Colors.white),
             onPressed: () {
               final code = textController.text.trim();
               if (code.isNotEmpty) {
@@ -460,6 +476,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: _cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => DraggableScrollableSheet(
         initialChildSize: 0.5,
         minChildSize: 0.3,
@@ -483,6 +503,9 @@ class _QueueListSheet extends StatefulWidget {
 }
 
 class _QueueListSheetState extends State<_QueueListSheet> {
+  static const Color _accent = Color(0xFF3498DB);
+  static const Color _secondaryText = Color(0xFFA0A5B1);
+
   List<Map<String, dynamic>> _items = [];
   bool _isSyncing = false;
 
@@ -531,7 +554,7 @@ class _QueueListSheetState extends State<_QueueListSheet> {
           width: 40,
           height: 4,
           decoration: BoxDecoration(
-            color: Colors.grey.shade300,
+            color: Colors.white24,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -542,11 +565,16 @@ class _QueueListSheetState extends State<_QueueListSheet> {
             children: [
               const Icon(Icons.cloud_upload, color: Colors.orange),
               const SizedBox(width: 8),
-              Text(
-                tr('QUEUE_HEADER', args: {'count': '${_items.length}'}),
-                style: Theme.of(context).textTheme.titleMedium,
+              Expanded(
+                child: Text(
+                  tr('QUEUE_HEADER', args: {'count': '${_items.length}'}),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-              const Spacer(),
               if (_items.isNotEmpty)
                 FilledButton.tonalIcon(
                   onPressed: _isSyncing ? null : _syncAll,
@@ -554,7 +582,8 @@ class _QueueListSheetState extends State<_QueueListSheet> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: _accent),
                         )
                       : const Icon(Icons.sync, size: 18),
                   label: Text(
@@ -563,18 +592,19 @@ class _QueueListSheetState extends State<_QueueListSheet> {
             ],
           ),
         ),
-        const Divider(height: 1),
+        Divider(height: 1, color: Colors.white.withAlpha(20)),
         // Lista
         Expanded(
           child: _items.isEmpty
               ? Center(
                   child: Text(tr('QUEUE_EMPTY'),
-                      style: const TextStyle(color: Colors.grey)),
+                      style: const TextStyle(color: _secondaryText)),
                 )
               : ListView.separated(
                   controller: widget.scrollController,
                   itemCount: _items.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, __) =>
+                      Divider(height: 1, color: Colors.white.withAlpha(20)),
                   itemBuilder: (context, index) {
                     final item = _items[index];
                     final qty = (item['quantity'] as num).toDouble();
@@ -582,16 +612,21 @@ class _QueueListSheetState extends State<_QueueListSheet> {
                         ? qty.toInt().toString()
                         : qty.toString();
                     return ListTile(
-                      leading: const CircleAvatar(
-                        child: Icon(Icons.qr_code, size: 20),
+                      leading: CircleAvatar(
+                        backgroundColor: _accent.withAlpha(40),
+                        child: const Icon(Icons.qr_code,
+                            size: 20, color: _accent),
                       ),
-                      title: Text(item['product_name'] as String),
+                      title: Text(item['product_name'] as String,
+                          style: const TextStyle(color: Colors.white)),
                       subtitle: Text(
                         '${item['barcode']}  •  $qtyStr ${_formatUnit(item['unit'] as String)}',
+                        style: const TextStyle(
+                            color: _secondaryText, fontSize: 12),
                       ),
                       trailing: IconButton(
-                        icon:
-                            const Icon(Icons.delete_outline, color: Colors.red),
+                        icon: Icon(Icons.delete_outline,
+                            color: Colors.red.shade300),
                         onPressed: () => _removeItem(item['id'] as int),
                       ),
                     );

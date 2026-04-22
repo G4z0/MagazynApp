@@ -213,8 +213,8 @@ const Map<String, Map<String, String>> _translations = {
     'SETTINGS_TITLE': 'Więcej',
     'SETTINGS_ABOUT': 'O aplikacji',
     'SETTINGS_ABOUT_TITLE': 'Warsztat',
-    'SETTINGS_ABOUT_SUBTITLE': 'Warsztat v1.0 — LogisticsERP',
-    'SETTINGS_VERSION': 'Wersja 1.0',
+    'SETTINGS_ABOUT_SUBTITLE': 'Warsztat v{version} — LogisticsERP',
+    'SETTINGS_VERSION': 'Wersja {version}',
     'SETTINGS_ABOUT_DESCRIPTION':
         'Aplikacja warsztatowa zintegrowana z systemem LogisticsERP. Zarządzanie stanami magazynowymi i naprawami.',
     'SETTINGS_ABOUT_FEATURES':
@@ -343,6 +343,18 @@ const Map<String, Map<String, String>> _translations = {
     'LOG_STOCK_IN': 'Przyjęcie',
     'LOG_STOCK_OUT': 'Wydanie',
     'LOG_LOGOUT': 'Wylogowano',
+
+    // ── Minimalny stan magazynowy ──
+    'LABEL_MIN_STOCK': 'Stan minimalny',
+    'HINT_MIN_STOCK_OPTIONAL': 'opcjonalnie',
+    'MIN_STOCK_VALIDATION': 'Podaj liczbę ≥ 0',
+    'MIN_STOCK_EDIT_TITLE': 'Edytuj stan minimalny',
+    'MIN_STOCK_REMOVE': 'Usuń',
+    'MIN_STOCK_SAVED': 'Zapisano stan minimalny',
+        'MIN_STOCK_QUEUED': 'Stan minimalny zapisano w kolejce offline',
+    'MIN_STOCK_NOT_SET': 'nieustawiony',
+    'BUTTON_EDIT': 'Edytuj',
+    'BUTTON_SET': 'Ustaw',
   },
   'en': {
     // ── App ──
@@ -518,8 +530,8 @@ const Map<String, Map<String, String>> _translations = {
     'SETTINGS_TITLE': 'More',
     'SETTINGS_ABOUT': 'About',
     'SETTINGS_ABOUT_TITLE': 'Workshop',
-    'SETTINGS_ABOUT_SUBTITLE': 'Workshop v1.0 — LogisticsERP',
-    'SETTINGS_VERSION': 'Version 1.0',
+    'SETTINGS_ABOUT_SUBTITLE': 'Workshop v{version} — LogisticsERP',
+    'SETTINGS_VERSION': 'Version {version}',
     'SETTINGS_ABOUT_DESCRIPTION':
         'Workshop app integrated with LogisticsERP. Stock and repair management.',
     'SETTINGS_ABOUT_FEATURES':
@@ -647,6 +659,18 @@ const Map<String, Map<String, String>> _translations = {
     'LOG_STOCK_IN': 'Receipt',
     'LOG_STOCK_OUT': 'Issue',
     'LOG_LOGOUT': 'Signed out',
+
+        // ── Minimum stock level ──
+        'LABEL_MIN_STOCK': 'Minimum stock',
+        'HINT_MIN_STOCK_OPTIONAL': 'optional',
+        'MIN_STOCK_VALIDATION': 'Enter a number >= 0',
+        'MIN_STOCK_EDIT_TITLE': 'Edit minimum stock',
+        'MIN_STOCK_REMOVE': 'Remove',
+        'MIN_STOCK_SAVED': 'Minimum stock saved',
+        'MIN_STOCK_QUEUED': 'Minimum stock queued for offline sync',
+        'MIN_STOCK_NOT_SET': 'not set',
+        'BUTTON_EDIT': 'Edit',
+        'BUTTON_SET': 'Set',
   },
   'uk': {
     // ── App ──
@@ -822,8 +846,8 @@ const Map<String, Map<String, String>> _translations = {
     'SETTINGS_TITLE': 'Ще',
     'SETTINGS_ABOUT': 'Про додаток',
     'SETTINGS_ABOUT_TITLE': 'Майстерня',
-    'SETTINGS_ABOUT_SUBTITLE': 'Майстерня v1.0 — LogisticsERP',
-    'SETTINGS_VERSION': 'Версія 1.0',
+    'SETTINGS_ABOUT_SUBTITLE': 'Майстерня v{version} — LogisticsERP',
+    'SETTINGS_VERSION': 'Версія {version}',
     'SETTINGS_ABOUT_DESCRIPTION':
         'Додаток майстерні інтегрований з LogisticsERP. Управління складом та ремонтами.',
     'SETTINGS_ABOUT_FEATURES':
@@ -952,6 +976,18 @@ const Map<String, Map<String, String>> _translations = {
     'LOG_STOCK_IN': 'Прийом',
     'LOG_STOCK_OUT': 'Видача',
     'LOG_LOGOUT': 'Вийшов',
+
+        // ── Мінімальний залишок ──
+        'LABEL_MIN_STOCK': 'Мінімальний залишок',
+        'HINT_MIN_STOCK_OPTIONAL': 'необов\'язково',
+        'MIN_STOCK_VALIDATION': 'Введіть число >= 0',
+        'MIN_STOCK_EDIT_TITLE': 'Редагувати мінімум',
+        'MIN_STOCK_REMOVE': 'Видалити',
+        'MIN_STOCK_SAVED': 'Мінімум збережено',
+        'MIN_STOCK_QUEUED': 'Мінімум додано до офлайн-черги',
+        'MIN_STOCK_NOT_SET': 'не встановлено',
+        'BUTTON_EDIT': 'Редагувати',
+        'BUTTON_SET': 'Встановити',
   },
   'ru': {
     // ── App ──
@@ -1129,8 +1165,8 @@ const Map<String, Map<String, String>> _translations = {
     'SETTINGS_TITLE': 'Ещё',
     'SETTINGS_ABOUT': 'О приложении',
     'SETTINGS_ABOUT_TITLE': 'Мастерская',
-    'SETTINGS_ABOUT_SUBTITLE': 'Мастерская v1.0 — LogisticsERP',
-    'SETTINGS_VERSION': 'Версия 1.0',
+    'SETTINGS_ABOUT_SUBTITLE': 'Мастерская v{version} — LogisticsERP',
+    'SETTINGS_VERSION': 'Версия {version}',
     'SETTINGS_ABOUT_DESCRIPTION':
         'Приложение мастерской интегрировано с LogisticsERP. Управление складом и ремонтами.',
     'SETTINGS_ABOUT_FEATURES':
@@ -1260,6 +1296,18 @@ const Map<String, Map<String, String>> _translations = {
     'LOG_STOCK_IN': 'Приём',
     'LOG_STOCK_OUT': 'Выдача',
     'LOG_LOGOUT': 'Вышел',
+
+        // ── Минимальный остаток ──
+        'LABEL_MIN_STOCK': 'Минимальный остаток',
+        'HINT_MIN_STOCK_OPTIONAL': 'необязательно',
+        'MIN_STOCK_VALIDATION': 'Введите число >= 0',
+        'MIN_STOCK_EDIT_TITLE': 'Редактировать минимум',
+        'MIN_STOCK_REMOVE': 'Удалить',
+        'MIN_STOCK_SAVED': 'Минимум сохранён',
+        'MIN_STOCK_QUEUED': 'Минимум добавлен в офлайн-очередь',
+        'MIN_STOCK_NOT_SET': 'не установлен',
+        'BUTTON_EDIT': 'Редактировать',
+        'BUTTON_SET': 'Установить',
   },
   'ka': {
     // ── App ──
@@ -1436,8 +1484,8 @@ const Map<String, Map<String, String>> _translations = {
     'SETTINGS_TITLE': 'სხვა',
     'SETTINGS_ABOUT': 'აპლიკაციის შესახებ',
     'SETTINGS_ABOUT_TITLE': 'სახელოსნო',
-    'SETTINGS_ABOUT_SUBTITLE': 'სახელოსნო v1.0 — LogisticsERP',
-    'SETTINGS_VERSION': 'ვერსია 1.0',
+    'SETTINGS_ABOUT_SUBTITLE': 'სახელოსნო v{version} — LogisticsERP',
+    'SETTINGS_VERSION': 'ვერსია {version}',
     'SETTINGS_ABOUT_DESCRIPTION':
         'სახელოსნოს აპლიკაცია ინტეგრირებულია LogisticsERP-თან. საწყობისა და შეკეთებების მართვა.',
     'SETTINGS_ABOUT_FEATURES':
@@ -1567,5 +1615,17 @@ const Map<String, Map<String, String>> _translations = {
     'LOG_STOCK_IN': 'მიღება',
     'LOG_STOCK_OUT': 'გაცემა',
     'LOG_LOGOUT': 'გავიდა',
+
+        // ── მინიმალური ნაშთი ──
+        'LABEL_MIN_STOCK': 'მინიმალური ნაშთი',
+        'HINT_MIN_STOCK_OPTIONAL': 'არასავალდებულო',
+        'MIN_STOCK_VALIDATION': 'შეიყვანეთ რიცხვი >= 0',
+        'MIN_STOCK_EDIT_TITLE': 'მინიმუმის რედაქტირება',
+        'MIN_STOCK_REMOVE': 'წაშლა',
+        'MIN_STOCK_SAVED': 'მინიმუმი შენახულია',
+        'MIN_STOCK_QUEUED': 'მინიმუმი დამატებულია ოფლაინ-რიგში',
+        'MIN_STOCK_NOT_SET': 'არ არის დაყენებული',
+        'BUTTON_EDIT': 'რედაქტირება',
+        'BUTTON_SET': 'დაყენება',
   },
 };

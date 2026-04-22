@@ -113,6 +113,16 @@ ALTER TABLE `stock_movements` ADD COLUMN `driver_id` INT DEFAULT NULL AFTER `iss
 ALTER TABLE `stock_movements` ADD COLUMN `driver_name` VARCHAR(100) DEFAULT NULL AFTER `driver_id`;
 
 -- =============================================================
+-- 8. Minimalne stany magazynowe — używamy istniejącej tabeli
+--    `stock_product_settings` (kolumna `min_quantity`).
+--    Schemat referencyjny:
+--      barcode VARCHAR(255), unit VARCHAR(50), min_quantity DECIMAL(10,2),
+--      acknowledged, acknowledged_at, acknowledged_by,
+--      updated_at, updated_by
+--    UNIQUE KEY (barcode, unit)
+-- =============================================================
+
+-- =============================================================
 -- 8. Tabela stock_products — słownik produktów + lokalizacja w magazynie
 --    Regał: 1-2 wielkie litery (A..ZZ). Półka: 0 (podłoga) .. 99.
 --    Slot identyfikowany jako "A0", "C3", "AB12" itd.

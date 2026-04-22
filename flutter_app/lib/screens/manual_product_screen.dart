@@ -21,6 +21,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
   final _nameController = TextEditingController();
   final _quantityController = TextEditingController(text: '1');
   final _noteController = TextEditingController();
+  final _minQuantityController = TextEditingController();
   final _rackController = TextEditingController();
   final _shelfController = TextEditingController();
 
@@ -55,6 +56,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
     _nameController.dispose();
     _quantityController.dispose();
     _noteController.dispose();
+    _minQuantityController.dispose();
     _rackController.dispose();
     _shelfController.dispose();
     super.dispose();
@@ -88,6 +90,11 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
         ? _noteController.text.trim()
         : null;
 
+    // Minimalny stan (opcjonalny)
+    final minQuantityText = _minQuantityController.text.trim().replaceAll(',', '.');
+    final double? minQuantity =
+        minQuantityText.isEmpty ? null : double.tryParse(minQuantityText);
+
     // Lokalizacja (opcjonalna). Walidacja w validatorach formularza.
     final rackText = _rackController.text.trim().toUpperCase();
     final shelfText = _shelfController.text.trim();
@@ -106,6 +113,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
         note: note,
         locationRack: locationRack,
         locationShelf: locationShelf,
+        minQuantity: minQuantity,
       );
 
       if (!mounted) return;
@@ -136,6 +144,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
         note: note,
         locationRack: locationRack,
         locationShelf: locationShelf,
+        minQuantity: minQuantity,
       );
 
       final label =
@@ -172,6 +181,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
         note: note,
         locationRack: locationRack,
         locationShelf: locationShelf,
+        minQuantity: minQuantity,
       );
 
       final label =
@@ -410,7 +420,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                   Expanded(
                     flex: 3,
                     child: DropdownButtonFormField<String>(
-                      value: _selectedUnit,
+                        initialValue: _selectedUnit,
                       isExpanded: true,
                       dropdownColor: _cardBg,
                       style: const TextStyle(color: Colors.white),
@@ -430,12 +440,46 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                               ))
                           .toList(),
                       onChanged: (value) {
-                        if (value != null)
+                          if (value != null) {
                           setState(() => _selectedUnit = value);
+                          }
                       },
                     ),
                   ),
                 ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Minimalny stan (opcjonalnie)
+              TextFormField(
+                controller: _minQuantityController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(color: Colors.white),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                ],
+                decoration: InputDecoration(
+                  labelText: tr('LABEL_MIN_STOCK'),
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  hintText: tr('HINT_MIN_STOCK_OPTIONAL'),
+                  hintStyle: const TextStyle(color: Colors.white24),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                  prefixIcon: const Icon(Icons.warning_amber, color: _accent),
+                  filled: true,
+                  fillColor: _inputBg,
+                ),
+                validator: (value) {
+                  final v = (value ?? '').trim();
+                  if (v.isEmpty) return null;
+                  final n = double.tryParse(v.replaceAll(',', '.'));
+                  if (n == null || n < 0) {
+                    return tr('MIN_STOCK_VALIDATION');
+                  }
+                  return null;
+                },
               ),
 
               const SizedBox(height: 16),
@@ -560,7 +604,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white),
                       )
-                    : Icon(Icons.add_circle, color: Colors.white),
+                    : const Icon(Icons.add_circle, color: Colors.white),
                 label: Text(
                   _isSaving ? tr('BUTTON_SAVING') : tr('BUTTON_RECEIVE_GOODS'),
                   style: const TextStyle(

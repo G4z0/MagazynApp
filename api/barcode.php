@@ -151,6 +151,9 @@ function handlePost($db) {
     $issueTarget = isset($input['issue_target']) ? trim($input['issue_target']) : null;
     $driverId = isset($input['driver_id']) ? (int)$input['driver_id'] : null;
     $driverName = isset($input['driver_name']) ? trim($input['driver_name']) : null;
+    $minQuantity = (isset($input['min_quantity']) && $input['min_quantity'] !== '' && $input['min_quantity'] !== null)
+        ? (float)$input['min_quantity']
+        : null;
 
     // Lokalizacja (opcjonalnie — tylko przy ręcznym dodaniu nowego produktu).
     // Jeśli oba puste → NULL/NULL i pole w tabeli nie zostanie nadpisane.
@@ -273,6 +276,23 @@ function handlePost($db) {
     } catch (PDOException $e) {
         // Tabela stock_products jeszcze nie istnieje — nie blokuj zapisu ruchu.
         // (Wymagana migracja: api/setup_database.sql sekcja 8.)
+    }
+
+    // Upsert minimalnego stanu (opcjonalnie). Tylko jeśli klient go podał.
+    if ($minQuantity !== null && $minQuantity >= 0) {
+        try {
+            $stmt = $db->prepare("
+                INSERT INTO stock_product_settings (barcode, unit, min_quantity, updated_at, updated_by)
+                VALUES (?, ?, ?, NOW(), ?)
+                ON DUPLICATE KEY UPDATE
+                    min_quantity = VALUES(min_quantity),
+                    updated_at = NOW(),
+                    updated_by = VALUES(updated_by)
+            ");
+            $stmt->execute([$barcode, $unit, $minQuantity, $userId]);
+        } catch (PDOException $e) {
+            // Tabela jeszcze nie istnieje — nie blokuj zapisu ruchu.
+        }
     }
 
     $label = $movementType === 'in' ? 'Przyjęto' : 'Wydano';
@@ -426,23 +446,48 @@ function handleGet($db) {
         return;
     }
 
-    // Alerty niskiego stanu (stan <= 0)
+    // Alerty niskiego stanu — używamy per-produktowego min_quantity
+    // (fallback: < 5, gdy brak ustawienia / tabela nie istnieje).
     if (isset($_GET['low_stock'])) {
-        $stmt = $db->prepare("
-            SELECT
-                barcode,
-                MAX(product_name) AS product_name,
-                unit,
-                COALESCE(SUM(CASE WHEN movement_type = 'in' THEN quantity ELSE 0 END), 0)
-                - COALESCE(SUM(CASE WHEN movement_type = 'out' THEN quantity ELSE 0 END), 0) AS current_stock
-            FROM stock_movements
-            GROUP BY barcode, unit
-            HAVING current_stock < 5
-            ORDER BY current_stock ASC, MAX(product_name) ASC
-            LIMIT 20
-        ");
-        $stmt->execute();
-        $items = $stmt->fetchAll();
+        try {
+            $stmt = $db->prepare("
+                SELECT
+                    sm.barcode,
+                    MAX(sm.product_name) AS product_name,
+                    sm.unit,
+                    COALESCE(SUM(CASE WHEN sm.movement_type = 'in' THEN sm.quantity ELSE 0 END), 0)
+                    - COALESCE(SUM(CASE WHEN sm.movement_type = 'out' THEN sm.quantity ELSE 0 END), 0) AS current_stock,
+                    sps.min_quantity
+                FROM stock_movements sm
+                LEFT JOIN stock_product_settings sps
+                       ON sps.barcode = sm.barcode AND sps.unit = sm.unit
+                GROUP BY sm.barcode, sm.unit, sps.min_quantity
+                HAVING current_stock < COALESCE(sps.min_quantity, 5)
+                   AND COALESCE(sps.min_quantity, 5) > 0
+                ORDER BY current_stock ASC, MAX(sm.product_name) ASC
+                LIMIT 50
+            ");
+            $stmt->execute();
+            $items = $stmt->fetchAll();
+        } catch (PDOException $e) {
+            // Fallback bez tabeli stock_product_settings
+            $stmt = $db->prepare("
+                SELECT
+                    barcode,
+                    MAX(product_name) AS product_name,
+                    unit,
+                    COALESCE(SUM(CASE WHEN movement_type = 'in' THEN quantity ELSE 0 END), 0)
+                    - COALESCE(SUM(CASE WHEN movement_type = 'out' THEN quantity ELSE 0 END), 0) AS current_stock,
+                    NULL AS min_quantity
+                FROM stock_movements
+                GROUP BY barcode, unit
+                HAVING current_stock < 5
+                ORDER BY current_stock ASC, MAX(product_name) ASC
+                LIMIT 20
+            ");
+            $stmt->execute();
+            $items = $stmt->fetchAll();
+        }
 
         echo json_encode(['success' => true, 'items' => $items]);
         return;
@@ -524,9 +569,12 @@ function handleGet($db) {
                 - COALESCE(SUM(CASE WHEN sm.movement_type = 'out' THEN sm.quantity ELSE 0 END), 0) AS current_stock,
                 MAX(sm.created_at) AS last_movement,
                 sp.location_rack,
-                sp.location_shelf
+                sp.location_shelf,
+                sps.min_quantity
             FROM stock_movements sm
             LEFT JOIN stock_products sp ON sp.barcode = sm.barcode
+            LEFT JOIN stock_product_settings sps
+                   ON sps.barcode = sm.barcode AND sps.unit = sm.unit
         ";
         $params = [];
 
@@ -536,7 +584,7 @@ function handleGet($db) {
             $params[] = "%$search%";
         }
 
-        $sql .= " GROUP BY sm.barcode, sm.unit, sp.location_rack, sp.location_shelf ORDER BY MAX(sm.created_at) DESC";
+        $sql .= " GROUP BY sm.barcode, sm.unit, sp.location_rack, sp.location_shelf, sps.min_quantity ORDER BY MAX(sm.created_at) DESC";
 
         try {
             $stmt = $db->prepare($sql);
@@ -583,20 +631,41 @@ function handleGet($db) {
 
     $barcode = trim($_GET['barcode']);
 
-    // Pobierz podsumowanie stanów (po jednostkach)
-    $stmt = $db->prepare("
-        SELECT
-            unit,
-            COALESCE(SUM(CASE WHEN movement_type = 'in' THEN quantity ELSE 0 END), 0) AS total_in,
-            COALESCE(SUM(CASE WHEN movement_type = 'out' THEN quantity ELSE 0 END), 0) AS total_out,
-            COALESCE(SUM(CASE WHEN movement_type = 'in' THEN quantity ELSE 0 END), 0)
-            - COALESCE(SUM(CASE WHEN movement_type = 'out' THEN quantity ELSE 0 END), 0) AS current_stock
-        FROM stock_movements
-        WHERE barcode = ?
-        GROUP BY unit
-    ");
-    $stmt->execute([$barcode]);
-    $stockByUnit = $stmt->fetchAll();
+    // Pobierz podsumowanie stanów (po jednostkach) wraz z minimalnym stanem
+    try {
+        $stmt = $db->prepare("
+            SELECT
+                sm.unit,
+                COALESCE(SUM(CASE WHEN sm.movement_type = 'in' THEN sm.quantity ELSE 0 END), 0) AS total_in,
+                COALESCE(SUM(CASE WHEN sm.movement_type = 'out' THEN sm.quantity ELSE 0 END), 0) AS total_out,
+                COALESCE(SUM(CASE WHEN sm.movement_type = 'in' THEN sm.quantity ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN sm.movement_type = 'out' THEN sm.quantity ELSE 0 END), 0) AS current_stock,
+                sps.min_quantity
+            FROM stock_movements sm
+            LEFT JOIN stock_product_settings sps
+                   ON sps.barcode = sm.barcode AND sps.unit = sm.unit
+            WHERE sm.barcode = ?
+            GROUP BY sm.unit, sps.min_quantity
+        ");
+        $stmt->execute([$barcode]);
+        $stockByUnit = $stmt->fetchAll();
+    } catch (PDOException $e) {
+        // Fallback bez tabeli stock_product_settings
+        $stmt = $db->prepare("
+            SELECT
+                unit,
+                COALESCE(SUM(CASE WHEN movement_type = 'in' THEN quantity ELSE 0 END), 0) AS total_in,
+                COALESCE(SUM(CASE WHEN movement_type = 'out' THEN quantity ELSE 0 END), 0) AS total_out,
+                COALESCE(SUM(CASE WHEN movement_type = 'in' THEN quantity ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN movement_type = 'out' THEN quantity ELSE 0 END), 0) AS current_stock,
+                NULL AS min_quantity
+            FROM stock_movements
+            WHERE barcode = ?
+            GROUP BY unit
+        ");
+        $stmt->execute([$barcode]);
+        $stockByUnit = $stmt->fetchAll();
+    }
 
     // Pobierz ostatnią nazwę produktu i typ kodu
     $stmt = $db->prepare("
@@ -689,6 +758,11 @@ function handlePut($db) {
 
     if ($action === 'set_location') {
         handleSetLocation($db, $input);
+        return;
+    }
+
+    if ($action === 'set_min_quantity') {
+        handleSetMinQuantity($db, $input);
         return;
     }
 
@@ -824,4 +898,80 @@ function handleSetLocation($db, $input) {
             'location_shelf' => $shelf,
         ],
     ]);
+}
+
+/**
+ * PUT action=set_min_quantity — ustaw lub usuń minimalny stan magazynowy.
+ *
+ * Body (JSON):
+ *   {
+ *     "action": "set_min_quantity",
+ *     "barcode": "5901234123457",
+ *     "unit": "szt",
+ *     "min_quantity": 5,        // null lub 0 aby wyłączyć alert
+ *     "user_id": 123             // opcjonalnie
+ *   }
+ */
+function handleSetMinQuantity($db, $input) {
+    if (empty($input['barcode'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Wymagane pole: barcode']);
+        return;
+    }
+
+    $barcode = trim($input['barcode']);
+    $unit = isset($input['unit']) ? trim($input['unit']) : 'szt';
+    $userId = isset($input['user_id']) ? (int)$input['user_id'] : null;
+
+    $allowedUnits = ['szt', 'l', 'kg', 'm', 'opak', 'kpl'];
+    if (!in_array($unit, $allowedUnits, true)) {
+        $unit = 'szt';
+    }
+
+    $hasValue = array_key_exists('min_quantity', $input)
+        && $input['min_quantity'] !== ''
+        && $input['min_quantity'] !== null;
+
+    try {
+        if (!$hasValue) {
+            // Usuń ustawienie
+            $stmt = $db->prepare("DELETE FROM stock_product_settings WHERE barcode = ? AND unit = ?");
+            $stmt->execute([$barcode, $unit]);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Minimalny stan usunięty',
+                'data' => ['barcode' => $barcode, 'unit' => $unit, 'min_quantity' => null],
+            ]);
+            return;
+        }
+
+        $minQuantity = (float)$input['min_quantity'];
+        if ($minQuantity < 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Minimalny stan nie może być ujemny']);
+            return;
+        }
+
+        $stmt = $db->prepare("
+            INSERT INTO stock_product_settings (barcode, unit, min_quantity, updated_at, updated_by)
+            VALUES (?, ?, ?, NOW(), ?)
+            ON DUPLICATE KEY UPDATE
+                min_quantity = VALUES(min_quantity),
+                updated_at = NOW(),
+                updated_by = VALUES(updated_by)
+        ");
+        $stmt->execute([$barcode, $unit, $minQuantity, $userId]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Minimalny stan zapisany',
+            'data' => ['barcode' => $barcode, 'unit' => $unit, 'min_quantity' => $minQuantity],
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Błąd bazy danych: ' . $e->getMessage(),
+        ]);
+    }
 }

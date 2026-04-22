@@ -30,7 +30,7 @@ class OfflineQueueService {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       p.join(dbPath, 'offline_queue.db'),
-      version: 7,
+      version: 8,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE queue (
@@ -52,6 +52,7 @@ class OfflineQueueService {
             driver_name TEXT,
             location_rack TEXT,
             location_shelf INTEGER,
+            min_quantity REAL,
             created_at TEXT NOT NULL
           )
         ''');
@@ -111,6 +112,12 @@ class OfflineQueueService {
             "ALTER TABLE queue ADD COLUMN location_shelf INTEGER",
           );
         }
+        if (oldVersion < 8) {
+          // v8: obsługa minimalnych stanów w kolejce offline.
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN min_quantity REAL",
+          );
+        }
       },
     );
   }
@@ -148,6 +155,7 @@ class OfflineQueueService {
     String? driverName,
     String? locationRack,
     int? locationShelf,
+    double? minQuantity,
   }) async {
     final db = await database;
     final auth = AuthService();
@@ -169,6 +177,7 @@ class OfflineQueueService {
       'driver_name': driverName,
       'location_rack': locationRack,
       'location_shelf': locationShelf,
+      'min_quantity': minQuantity,
       'created_at': DateTime.now().toIso8601String(),
     });
     await _refreshCount();
@@ -201,6 +210,30 @@ class OfflineQueueService {
     await _refreshCount();
   }
 
+  /// Dodaj zmianę minimalnego stanu do kolejki offline.
+  Future<void> enqueueSetMinQuantity({
+    required String barcode,
+    required String unit,
+    required double? minQuantity,
+  }) async {
+    final db = await database;
+    final auth = AuthService();
+    await db.insert('queue', {
+      'action_type': 'set_min_quantity',
+      'barcode': barcode,
+      'code_type': 'barcode',
+      'product_name': '',
+      'movement_type': 'in',
+      'quantity': 0,
+      'unit': unit,
+      'user_id': auth.userId,
+      'user_name': auth.displayName,
+      'min_quantity': minQuantity,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    await _refreshCount();
+  }
+
   /// Wyślij zakolejkowane ruchy na serwer
   Future<void> syncQueue() async {
     if (_isSyncing) return;
@@ -220,6 +253,12 @@ class OfflineQueueService {
               rack: item['location_rack'] as String?,
               shelf: item['location_shelf'] as int?,
             );
+          } else if (actionType == 'set_min_quantity') {
+            await ApiService.setMinQuantity(
+              barcode: item['barcode'] as String,
+              unit: item['unit'] as String,
+              minQuantity: (item['min_quantity'] as num?)?.toDouble(),
+            );
           } else {
             await ApiService.saveProduct(
               barcode: item['barcode'] as String,
@@ -236,6 +275,7 @@ class OfflineQueueService {
               driverName: item['driver_name'] as String?,
               locationRack: item['location_rack'] as String?,
               locationShelf: item['location_shelf'] as int?,
+              minQuantity: (item['min_quantity'] as num?)?.toDouble(),
             );
           }
           // Wysłano — usuń z kolejki

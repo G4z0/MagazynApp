@@ -33,6 +33,7 @@ class ApiService {
     String? driverName,
     String? locationRack,
     int? locationShelf,
+    double? minQuantity,
   }) async {
     try {
       final body = <String, dynamic>{
@@ -66,6 +67,9 @@ class ApiService {
           locationShelf != null) {
         body['location_rack'] = locationRack;
         body['location_shelf'] = locationShelf;
+      }
+      if (minQuantity != null && minQuantity >= 0) {
+        body['min_quantity'] = minQuantity;
       }
 
       // Dołącz dane użytkownika
@@ -280,6 +284,54 @@ class ApiService {
               'location_rack': rack,
               'location_shelf': shelf,
             }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        if (data['success'] == true) return;
+        throw ApiException(data['error'] ?? tr('ERROR_UNKNOWN'));
+      }
+      if (response.statusCode >= 400 && response.statusCode < 500) {
+        throw ApiException(data['error'] ?? tr('ERROR_UNKNOWN'));
+      }
+      throw NetworkException(
+        tr('ERROR_SERVER_STATUS', args: {'code': '${response.statusCode}'}),
+      );
+    } on http.ClientException {
+      throw NetworkException(tr('ERROR_NO_CONNECTION'));
+    } on FormatException {
+      throw ApiException(tr('ERROR_INVALID_RESPONSE'));
+    }
+  }
+
+  /// Ustaw lub usuń minimalny stan magazynowy dla pary (barcode, unit).
+  ///
+  /// Przekazanie [minQuantity] = null usuwa ustawienie (wyłącza alert).
+  /// Rzuca [ApiException] dla błędów 4xx, [NetworkException] dla sieci/5xx.
+  static Future<void> setMinQuantity({
+    required String barcode,
+    required String unit,
+    required double? minQuantity,
+  }) async {
+    try {
+      final auth = AuthService();
+      final body = <String, dynamic>{
+        'action': 'set_min_quantity',
+        'barcode': barcode,
+        'unit': unit,
+        'min_quantity': minQuantity,
+      };
+      if (auth.userId != null) {
+        body['user_id'] = auth.userId;
+      }
+
+      final response = await http
+          .put(
+            Uri.parse(_endpoint),
+            headers: {'Content-Type': 'application/json; charset=utf-8'},
+            body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 10));
 

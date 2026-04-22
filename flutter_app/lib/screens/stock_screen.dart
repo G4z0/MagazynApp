@@ -92,6 +92,11 @@ class _StockScreenState extends State<StockScreen> {
                   ),
                 ),
                 IconButton(
+                  onPressed: _showLocationLookupDialog,
+                  icon: const Icon(Icons.pin_drop, color: accent),
+                  tooltip: tr('TOOLTIP_CHECK_LOCATION'),
+                ),
+                IconButton(
                   onPressed: _isLoading
                       ? null
                       : () =>
@@ -220,7 +225,12 @@ class _StockScreenState extends State<StockScreen> {
     final totalIn = double.tryParse(product['total_in'].toString()) ?? 0;
     final totalOut = double.tryParse(product['total_out'].toString()) ?? 0;
     final lastMovement = product['last_movement'] as String?;
-    final isLow = currentStock <= 0;
+    final minQuantityRaw = product['min_quantity'];
+    final double? minQuantity = (minQuantityRaw == null)
+        ? null
+        : (double.tryParse(minQuantityRaw.toString()) ?? 0);
+    final bool hasMin = minQuantity != null && minQuantity > 0;
+    final isLow = hasMin ? currentStock < minQuantity : currentStock <= 0;
     final locationLabel =
         _formatLocation(product['location_rack'], product['location_shelf']);
 
@@ -388,6 +398,7 @@ class _StockScreenState extends State<StockScreen> {
 
     final data = result['data'] as Map<String, dynamic>?;
     final movements = result['movements'] as List? ?? [];
+    final stockList = result['stock'] as List? ?? [];
 
     showModalBottomSheet(
       context: context,
@@ -504,6 +515,75 @@ class _StockScreenState extends State<StockScreen> {
                 ),
               ],
               const SizedBox(height: 16),
+            ],
+            // Sekcja minimalnych stanów (per jednostka)
+            if (data != null && stockList.isNotEmpty) ...[
+              ...stockList.map((s) {
+                final m = Map<String, dynamic>.from(s as Map);
+                final unit = m['unit'] as String? ?? 'szt';
+                final cur =
+                    double.tryParse(m['current_stock'].toString()) ?? 0;
+                final minRaw = m['min_quantity'];
+                final double? minVal = (minRaw == null)
+                    ? null
+                    : (double.tryParse(minRaw.toString()) ?? 0);
+                final bool hasMin = minVal != null && minVal > 0;
+                final bool low = hasMin ? cur < minVal : false;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(10),
+                      border: low
+                          ? Border.all(color: Colors.red.shade800, width: 1)
+                          : null,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          low ? Icons.warning_amber : Icons.warning_amber,
+                          size: 18,
+                          color: low ? Colors.red.shade300 : Colors.white38,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            hasMin
+                                ? "${tr('LABEL_MIN_STOCK')}: ${_formatQty(minVal)} $unit"
+                                : "${tr('LABEL_MIN_STOCK')}: ${tr('MIN_STOCK_NOT_SET')} ($unit)",
+                            style: TextStyle(
+                              color: low ? Colors.red.shade300 : Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _showEditMinStockDialog(barcode, unit, minVal);
+                          },
+                          icon: const Icon(Icons.edit,
+                              size: 16, color: accent),
+                          label: Text(
+                            hasMin ? tr('BUTTON_EDIT') : tr('BUTTON_SET'),
+                            style: const TextStyle(
+                                color: accent, fontSize: 13),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            minimumSize: const Size(0, 32),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 8),
             ],
             // Przycisk Wydaj
             if (data != null)
@@ -759,6 +839,166 @@ class _StockScreenState extends State<StockScreen> {
           SnackBar(
             content: Text(e.message),
             backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showEditMinStockDialog(
+    String barcode,
+    String unit,
+    double? currentValue,
+  ) async {
+    final controller = TextEditingController(
+      text: (currentValue == null || currentValue <= 0)
+          ? ''
+          : (currentValue == currentValue.roundToDouble()
+              ? currentValue.toInt().toString()
+              : currentValue.toString()),
+    );
+    final action = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2F3A),
+        title: Text(
+          tr('MIN_STOCK_EDIT_TITLE'),
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$barcode  ($unit)',
+              style: const TextStyle(
+                color: Colors.white54,
+                fontFamily: 'monospace',
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+              ],
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: tr('LABEL_MIN_STOCK'),
+                labelStyle: const TextStyle(color: Colors.white54),
+                hintText: tr('HINT_MIN_STOCK_OPTIONAL'),
+                hintStyle: const TextStyle(color: Colors.white24),
+                filled: true,
+                fillColor: const Color(0xFF1C1E26),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                prefixIcon:
+                    const Icon(Icons.warning_amber, color: accent),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              tr('BUTTON_CANCEL'),
+              style: const TextStyle(color: Colors.white54),
+            ),
+          ),
+          if (currentValue != null && currentValue > 0)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, 'remove'),
+              child: Text(
+                tr('MIN_STOCK_REMOVE'),
+                style: TextStyle(color: Colors.red.shade300),
+              ),
+            ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, 'save'),
+            style: FilledButton.styleFrom(backgroundColor: accent),
+            child: Text(
+              tr('BUTTON_SAVE'),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (action == null) {
+      controller.dispose();
+      return;
+    }
+
+    double? newValue;
+    if (action == 'save') {
+      final raw = controller.text.trim().replaceAll(',', '.');
+      if (raw.isEmpty) {
+        newValue = null; // pusty zapis = usunięcie
+      } else {
+        final parsed = double.tryParse(raw);
+        if (parsed == null || parsed < 0) {
+          controller.dispose();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(tr('MIN_STOCK_VALIDATION')),
+                backgroundColor: Colors.red.shade700,
+              ),
+            );
+          }
+          return;
+        }
+        newValue = parsed;
+      }
+    } else {
+      // remove
+      newValue = null;
+    }
+    controller.dispose();
+
+    try {
+      await ApiService.setMinQuantity(
+        barcode: barcode,
+        unit: unit,
+        minQuantity: newValue,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('MIN_STOCK_SAVED')),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+        _loadProducts(search: _searchController.text.trim());
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    } on NetworkException {
+      await OfflineQueueService().enqueueSetMinQuantity(
+        barcode: barcode,
+        unit: unit,
+        minQuantity: newValue,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('MIN_STOCK_QUEUED')),
+            backgroundColor: Colors.orange.shade800,
           ),
         );
       }

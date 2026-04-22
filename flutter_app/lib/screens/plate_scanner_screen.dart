@@ -266,8 +266,10 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
           children: [
             const CircularProgressIndicator(color: _accent),
             const SizedBox(width: 20),
-            Text(tr('PLATE_SEARCHING'),
-                style: const TextStyle(color: Colors.white)),
+            Flexible(
+              child: Text(tr('PLATE_SEARCHING'),
+                  style: const TextStyle(color: Colors.white)),
+            ),
           ],
         ),
       ),

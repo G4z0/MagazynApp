@@ -25,6 +25,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   final _nameController = TextEditingController();
   final _quantityController = TextEditingController(text: '1');
   final _noteController = TextEditingController();
+  final _minQuantityController = TextEditingController();
   final _piecesPerPackageController = TextEditingController();
   final _vehiclePlateController = TextEditingController();
   final _rackController = TextEditingController();
@@ -97,6 +98,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _nameController.dispose();
     _quantityController.dispose();
     _noteController.dispose();
+    _minQuantityController.dispose();
     _piecesPerPackageController.dispose();
     _vehiclePlateController.dispose();
     _rackController.dispose();
@@ -127,6 +129,29 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       }
     }
     return 0;
+  }
+
+  /// Wczytaj kontrolkę minimalnego stanu na podstawie aktualnie wybranej jednostki.
+  void _syncMinQuantityFromStock() {
+    Map<String, dynamic>? entry;
+    for (final s in _stockByUnit) {
+      if (s['unit'] == _selectedUnit) {
+        entry = s;
+        break;
+      }
+    }
+    final raw = entry?['min_quantity'];
+    if (raw == null) {
+      _minQuantityController.text = '';
+      return;
+    }
+    final v = double.tryParse(raw.toString()) ?? 0;
+    if (v <= 0) {
+      _minQuantityController.text = '';
+      return;
+    }
+    _minQuantityController.text =
+        v == v.roundToDouble() ? v.toInt().toString() : v.toString();
   }
 
   /// Sprawdź czy kod już istnieje w bazie — pobierz stan i historię
@@ -161,6 +186,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             if (_stockByUnit.isNotEmpty) {
               _selectedUnit = _stockByUnit.first['unit'] as String? ?? 'szt';
             }
+            _syncMinQuantityFromStock();
           }
           if (result['movements'] != null) {
             _movements = List<Map<String, dynamic>>.from(
@@ -203,6 +229,13 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     }
     final note = userNote.isNotEmpty ? userNote : null;
 
+    // Minimalny stan (opcjonalny). Zapisywany tylko przy przyjęciu (movement_type='in').
+    final minQuantityText =
+        _minQuantityController.text.trim().replaceAll(',', '.');
+    final double? minQuantity = (_movementType == 'in' && minQuantityText.isNotEmpty)
+        ? double.tryParse(minQuantityText)
+        : null;
+
     // Lokalizacja w magazynie — opcjonalna; zapisujemy tylko przy przyjęciu.
     final rackText = _rackController.text.trim().toUpperCase();
     final shelfText = _shelfController.text.trim();
@@ -223,6 +256,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         note: note,
         locationRack: locationRack,
         locationShelf: locationShelf,
+        minQuantity: minQuantity,
         issueReason: _movementType == 'out' ? _issueReason : null,
         vehiclePlate: _movementType == 'out' && _issueTarget == 'vehicle'
             ? _vehiclePlateController.text.trim()
@@ -276,6 +310,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         driverName: _movementType == 'out' && _issueTarget == 'driver'
             ? _selectedDriverName
             : null,
+        minQuantity: minQuantity,
       );
 
       final label =
@@ -317,6 +352,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         driverName: _movementType == 'out' && _issueTarget == 'driver'
             ? _selectedDriverName
             : null,
+        minQuantity: minQuantity,
       );
 
       final label2 =
@@ -918,7 +954,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     Expanded(
                       flex: 3,
                       child: DropdownButtonFormField<String>(
-                        value: _selectedUnit,
+                        initialValue: _selectedUnit,
                         isExpanded: true,
                         dropdownColor: _cardBg,
                         style: const TextStyle(color: Colors.white),
@@ -938,8 +974,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                 ))
                             .toList(),
                         onChanged: (value) {
-                          if (value != null)
+                          if (value != null) {
                             setState(() => _selectedUnit = value);
+                            _syncMinQuantityFromStock();
+                          }
                         },
                       ),
                     ),
@@ -994,7 +1032,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                       Expanded(
                         flex: 2,
                         child: DropdownButtonFormField<String>(
-                          value: _targetUnit,
+                          initialValue: _targetUnit,
                           isExpanded: true,
                           dropdownColor: _cardBg,
                           style: const TextStyle(color: Colors.white),
@@ -1014,8 +1052,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                   ))
                               .toList(),
                           onChanged: (value) {
-                            if (value != null)
+                            if (value != null) {
                               setState(() => _targetUnit = value);
+                            }
                           },
                         ),
                       ),
@@ -1051,6 +1090,42 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 ],
 
                 const SizedBox(height: 16),
+
+                // Minimalny stan (opcjonalnie) — tylko przy przyjęciu
+                if (!isOut) ...[
+                  TextFormField(
+                    controller: _minQuantityController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    style: const TextStyle(color: Colors.white),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                    ],
+                    decoration: InputDecoration(
+                      labelText: tr('LABEL_MIN_STOCK'),
+                      labelStyle: const TextStyle(color: Colors.white54),
+                      hintText: tr('HINT_MIN_STOCK_OPTIONAL'),
+                      hintStyle: const TextStyle(color: Colors.white24),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none),
+                      prefixIcon:
+                          const Icon(Icons.warning_amber, color: _accent),
+                      filled: true,
+                      fillColor: _inputBg,
+                    ),
+                    validator: (value) {
+                      final v = (value ?? '').trim();
+                      if (v.isEmpty) return null;
+                      final n = double.tryParse(v.replaceAll(',', '.'));
+                      if (n == null || n < 0) {
+                        return tr('MIN_STOCK_VALIDATION');
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // Notatka (opcjonalna)
                 TextFormField(
