@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../l10n/translations.dart';
+import '../models/issue_target_preset.dart';
 import '../services/offline_queue_service.dart';
 import 'ocr_capture_screen.dart';
 import 'product_form_screen.dart';
@@ -14,8 +15,15 @@ import 'product_form_screen.dart';
 /// wraca z wynikiem (String) zamiast przechodzić do formularza.
 class ScannerScreen extends StatefulWidget {
   final bool returnBarcodeOnly;
+  final String initialMovementType;
+  final IssueTargetPreset? initialIssueTargetPreset;
 
-  const ScannerScreen({super.key, this.returnBarcodeOnly = false});
+  const ScannerScreen({
+    super.key,
+    this.returnBarcodeOnly = false,
+    this.initialMovementType = 'in',
+    this.initialIssueTargetPreset,
+  });
 
   @override
   State<ScannerScreen> createState() => _ScannerScreenState();
@@ -88,7 +96,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ProductFormScreen(barcode: code),
+        builder: (context) => ProductFormScreen(
+          barcode: code,
+          initialMovementType: widget.initialMovementType,
+          initialIssueTargetPreset: widget.initialIssueTargetPreset,
+        ),
       ),
     ).then((_) {
       setState(() {
@@ -292,7 +304,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                                   onPressed: _confirmCode,
                                   icon: const Icon(Icons.check),
                                   label: Text(tr('BUTTON_CONFIRM'),
-                                      style: TextStyle(fontSize: 16)),
+                                      style: const TextStyle(fontSize: 16)),
                                   style: FilledButton.styleFrom(
                                     backgroundColor: Colors.green.shade700,
                                     padding: const EdgeInsets.symmetric(
@@ -458,7 +470,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ProductFormScreen(barcode: code),
+                      builder: (_) => ProductFormScreen(
+                        barcode: code,
+                        initialMovementType: widget.initialMovementType,
+                        initialIssueTargetPreset: widget.initialIssueTargetPreset,
+                      ),
                     ),
                   );
                 }

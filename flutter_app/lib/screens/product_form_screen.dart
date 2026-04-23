@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../l10n/translations.dart';
 import '../models/code_type.dart';
+import '../models/issue_target_preset.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/local_history_service.dart';
@@ -12,9 +13,13 @@ import '../services/offline_queue_service.dart';
 class ProductFormScreen extends StatefulWidget {
   final String barcode;
   final String initialMovementType;
+  final IssueTargetPreset? initialIssueTargetPreset;
 
   const ProductFormScreen(
-      {super.key, required this.barcode, this.initialMovementType = 'in'});
+      {super.key,
+      required this.barcode,
+      this.initialMovementType = 'in',
+      this.initialIssueTargetPreset});
 
   @override
   State<ProductFormScreen> createState() => _ProductFormScreenState();
@@ -76,8 +81,29 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _movementType = widget.initialMovementType;
     _resolvedBarcode = widget.barcode;
     _codeType = CodeType.detect(widget.barcode);
+    _applyIssueTargetPreset(widget.initialIssueTargetPreset);
     _checkExistingBarcode();
     _loadDrivers();
+  }
+
+  void _applyIssueTargetPreset(IssueTargetPreset? preset) {
+    if (preset == null || !preset.hasReusableTarget) {
+      return;
+    }
+
+    _issueTarget = preset.issueTarget;
+    if (preset.issueTarget == 'vehicle') {
+      _vehiclePlateController.text = preset.vehiclePlate ?? '';
+      _selectedDriverId = null;
+      _selectedDriverName = null;
+      return;
+    }
+
+    if (preset.issueTarget == 'driver') {
+      _vehiclePlateController.clear();
+      _selectedDriverId = preset.driverId;
+      _selectedDriverName = preset.driverName;
+    }
   }
 
   Future<void> _loadDrivers() async {
@@ -234,6 +260,16 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       unit = _selectedUnit;
     }
     final note = userNote.isNotEmpty ? userNote : null;
+    final issueTarget = _movementType == 'out' ? _issueTarget : null;
+    final vehiclePlate = _movementType == 'out' && _issueTarget == 'vehicle'
+      ? _vehiclePlateController.text.trim()
+      : null;
+    final driverId = _movementType == 'out' && _issueTarget == 'driver'
+      ? _selectedDriverId
+      : null;
+    final driverName = _movementType == 'out' && _issueTarget == 'driver'
+      ? _selectedDriverName
+      : null;
 
     // Minimalny stan (opcjonalny). Zapisywany tylko przy przyjęciu (movement_type='in').
     final minQuantityText =
@@ -264,16 +300,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         locationShelf: locationShelf,
         minQuantity: minQuantity,
         issueReason: _movementType == 'out' ? _issueReason : null,
-        vehiclePlate: _movementType == 'out' && _issueTarget == 'vehicle'
-            ? _vehiclePlateController.text.trim()
-            : null,
-        issueTarget: _movementType == 'out' ? _issueTarget : null,
-        driverId: _movementType == 'out' && _issueTarget == 'driver'
-            ? _selectedDriverId
-            : null,
-        driverName: _movementType == 'out' && _issueTarget == 'driver'
-            ? _selectedDriverName
-            : null,
+        vehiclePlate: vehiclePlate,
+        issueTarget: issueTarget,
+        driverId: driverId,
+        driverName: driverName,
       );
 
       if (!mounted) return;
@@ -290,6 +320,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         barcode: barcode,
         quantity: quantity,
         unit: unit,
+        issueTarget: issueTarget,
+        vehiclePlate: vehiclePlate,
+        driverId: driverId,
+        driverName: driverName,
         userName: AuthService().displayName,
       );
 
@@ -306,16 +340,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         locationRack: locationRack,
         locationShelf: locationShelf,
         issueReason: _movementType == 'out' ? _issueReason : null,
-        vehiclePlate: _movementType == 'out' && _issueTarget == 'vehicle'
-            ? _vehiclePlateController.text.trim()
-            : null,
-        issueTarget: _movementType == 'out' ? _issueTarget : null,
-        driverId: _movementType == 'out' && _issueTarget == 'driver'
-            ? _selectedDriverId
-            : null,
-        driverName: _movementType == 'out' && _issueTarget == 'driver'
-            ? _selectedDriverName
-            : null,
+        vehiclePlate: vehiclePlate,
+        issueTarget: issueTarget,
+        driverId: driverId,
+        driverName: driverName,
         minQuantity: minQuantity,
       );
 
@@ -328,6 +356,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         barcode: barcode,
         quantity: quantity,
         unit: unit,
+        issueTarget: issueTarget,
+        vehiclePlate: vehiclePlate,
+        driverId: driverId,
+        driverName: driverName,
         userName: AuthService().displayName,
       );
 
@@ -348,16 +380,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         locationRack: locationRack,
         locationShelf: locationShelf,
         issueReason: _movementType == 'out' ? _issueReason : null,
-        vehiclePlate: _movementType == 'out' && _issueTarget == 'vehicle'
-            ? _vehiclePlateController.text.trim()
-            : null,
-        issueTarget: _movementType == 'out' ? _issueTarget : null,
-        driverId: _movementType == 'out' && _issueTarget == 'driver'
-            ? _selectedDriverId
-            : null,
-        driverName: _movementType == 'out' && _issueTarget == 'driver'
-            ? _selectedDriverName
-            : null,
+        vehiclePlate: vehiclePlate,
+        issueTarget: issueTarget,
+        driverId: driverId,
+        driverName: driverName,
         minQuantity: minQuantity,
       );
 
@@ -370,6 +396,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         barcode: barcode,
         quantity: quantity,
         unit: unit,
+        issueTarget: issueTarget,
+        vehiclePlate: vehiclePlate,
+        driverId: driverId,
+        driverName: driverName,
         userName: AuthService().displayName,
       );
 

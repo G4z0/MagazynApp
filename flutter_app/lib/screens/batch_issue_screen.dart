@@ -373,6 +373,10 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
 
     int successCount = 0;
     int failCount = 0;
+    final vehiclePlate =
+        _issueTarget == 'vehicle' ? _vehiclePlateController.text.trim() : null;
+    final driverId = _issueTarget == 'driver' ? _selectedDriverId : null;
+    final driverName = _issueTarget == 'driver' ? _selectedDriverName : null;
 
     for (final item in pendingItems) {
       try {
@@ -385,12 +389,10 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
           movementType: 'out',
           note: item.note,
           issueReason: _issueReason,
-          vehiclePlate: _issueTarget == 'vehicle'
-              ? _vehiclePlateController.text.trim()
-              : null,
+          vehiclePlate: vehiclePlate,
           issueTarget: _issueTarget,
-          driverId: _issueTarget == 'driver' ? _selectedDriverId : null,
-          driverName: _issueTarget == 'driver' ? _selectedDriverName : null,
+          driverId: driverId,
+          driverName: driverName,
         );
 
         await LocalHistoryService().add(
@@ -401,6 +403,10 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
           barcode: item.barcode,
           quantity: item.quantity,
           unit: item.unit,
+          issueTarget: _issueTarget,
+          vehiclePlate: vehiclePlate,
+          driverId: driverId,
+          driverName: driverName,
           userName: AuthService().displayName,
         );
 
@@ -421,12 +427,10 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
           movementType: 'out',
           note: item.note,
           issueReason: _issueReason,
-          vehiclePlate: _issueTarget == 'vehicle'
-              ? _vehiclePlateController.text.trim()
-              : null,
+          vehiclePlate: vehiclePlate,
           issueTarget: _issueTarget,
-          driverId: _issueTarget == 'driver' ? _selectedDriverId : null,
-          driverName: _issueTarget == 'driver' ? _selectedDriverName : null,
+          driverId: driverId,
+          driverName: driverName,
         );
 
         await LocalHistoryService().add(
@@ -437,6 +441,10 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
           barcode: item.barcode,
           quantity: item.quantity,
           unit: item.unit,
+          issueTarget: _issueTarget,
+          vehiclePlate: vehiclePlate,
+          driverId: driverId,
+          driverName: driverName,
           userName: AuthService().displayName,
         );
 
@@ -462,12 +470,10 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
           movementType: 'out',
           note: item.note,
           issueReason: _issueReason,
-          vehiclePlate: _issueTarget == 'vehicle'
-              ? _vehiclePlateController.text.trim()
-              : null,
+          vehiclePlate: vehiclePlate,
           issueTarget: _issueTarget,
-          driverId: _issueTarget == 'driver' ? _selectedDriverId : null,
-          driverName: _issueTarget == 'driver' ? _selectedDriverName : null,
+          driverId: driverId,
+          driverName: driverName,
         );
 
         await LocalHistoryService().add(
@@ -478,6 +484,10 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
           barcode: item.barcode,
           quantity: item.quantity,
           unit: item.unit,
+          issueTarget: _issueTarget,
+          vehiclePlate: vehiclePlate,
+          driverId: driverId,
+          driverName: driverName,
           userName: AuthService().displayName,
         );
 

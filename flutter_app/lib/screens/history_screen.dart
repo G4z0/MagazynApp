@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../l10n/translations.dart';
+import '../models/issue_target_preset.dart';
 import '../services/local_history_service.dart';
+import 'scanner_screen.dart';
 
 /// Ekran historii działań wykonanych NA TYM urządzeniu.
 class HistoryScreen extends StatefulWidget {
@@ -26,11 +28,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Future<void> _load() async {
     final items = await LocalHistoryService().getHistory(limit: 200);
-    if (mounted)
+    if (mounted) {
       setState(() {
         _items = items;
         _isLoading = false;
       });
+    }
   }
 
   Future<void> _clearHistory() async {
@@ -60,6 +63,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
       await LocalHistoryService().clear();
       _load();
     }
+  }
+
+  String? _issueTargetSummary(IssueTargetPreset? preset) {
+    if (preset == null || !preset.hasReusableTarget) {
+      return null;
+    }
+
+    if (preset.issueTarget == 'vehicle') {
+      return '${tr('LABEL_ISSUE_TARGET')}: ${tr('ISSUE_TO_VEHICLE')} • ${preset.vehiclePlate}';
+    }
+
+    if (preset.issueTarget == 'driver') {
+      return '${tr('LABEL_ISSUE_TARGET')}: ${tr('ISSUE_TO_DRIVER')} • ${preset.driverName}';
+    }
+
+    return null;
+  }
+
+  Future<void> _scanNextForPreset(IssueTargetPreset preset) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ScannerScreen(
+          initialMovementType: 'out',
+          initialIssueTargetPreset: preset,
+        ),
+      ),
+    );
+    await _load();
   }
 
   IconData _iconForAction(String type) {
@@ -187,6 +219,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
           final subtitle = item['subtitle'] as String?;
           final createdAt = item['created_at'] as String? ?? '';
           final userName = item['user_name'] as String?;
+          final preset = IssueTargetPreset.fromHistoryItem(item);
+          final targetSummary = _issueTargetSummary(preset);
 
           return Container(
             padding: const EdgeInsets.all(12),
@@ -195,6 +229,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   width: 40,
@@ -229,6 +264,50 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                 color: _secondaryText, fontSize: 12),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      if (targetSummary != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            children: [
+                              Icon(
+                                preset!.issueTarget == 'vehicle'
+                                    ? Icons.local_shipping
+                                    : Icons.person,
+                                size: 14,
+                                color: _accent,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  targetSummary,
+                                  style: const TextStyle(
+                                      color: _secondaryText, fontSize: 12),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (preset != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () => _scanNextForPreset(preset),
+                              icon: const Icon(Icons.qr_code_scanner, size: 18),
+                              label: Text(tr('BUTTON_SCAN_NEXT')),
+                              style: TextButton.styleFrom(
+                                foregroundColor: _accent,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
                           ),
                         ),
                       Padding(

@@ -19,7 +19,7 @@ class LocalHistoryService {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       p.join(dbPath, 'local_history.db'),
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE history (
@@ -30,10 +30,22 @@ class LocalHistoryService {
             barcode TEXT,
             quantity REAL,
             unit TEXT,
+            issue_target TEXT,
+            vehicle_plate TEXT,
+            driver_id INTEGER,
+            driver_name TEXT,
             user_name TEXT,
             created_at TEXT NOT NULL
           )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE history ADD COLUMN issue_target TEXT');
+          await db.execute('ALTER TABLE history ADD COLUMN vehicle_plate TEXT');
+          await db.execute('ALTER TABLE history ADD COLUMN driver_id INTEGER');
+          await db.execute('ALTER TABLE history ADD COLUMN driver_name TEXT');
+        }
       },
     );
   }
@@ -46,6 +58,10 @@ class LocalHistoryService {
     String? barcode,
     double? quantity,
     String? unit,
+    String? issueTarget,
+    String? vehiclePlate,
+    int? driverId,
+    String? driverName,
     String? userName,
   }) async {
     final db = await database;
@@ -56,6 +72,10 @@ class LocalHistoryService {
       'barcode': barcode,
       'quantity': quantity,
       'unit': unit,
+      'issue_target': issueTarget,
+      'vehicle_plate': vehiclePlate,
+      'driver_id': driverId,
+      'driver_name': driverName,
       'user_name': userName,
       'created_at': DateTime.now().toIso8601String(),
     });
