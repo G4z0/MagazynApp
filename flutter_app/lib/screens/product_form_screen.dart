@@ -34,6 +34,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   bool _isSaving = false;
   bool _isChecking = true;
   String? _existingName;
+  late String _resolvedBarcode;
   String _selectedUnit = 'szt';
   String _movementType = 'in'; // 'in' lub 'out'
   String _targetUnit = 'szt'; // docelowa jednostka przy przeliczeniu opak/kpl
@@ -73,6 +74,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   void initState() {
     super.initState();
     _movementType = widget.initialMovementType;
+    _resolvedBarcode = widget.barcode;
     _codeType = CodeType.detect(widget.barcode);
     _checkExistingBarcode();
     _loadDrivers();
@@ -163,6 +165,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         if (result != null) {
           final data = result['data'] as Map<String, dynamic>?;
           if (data != null) {
+            final resolvedBarcode = (data['barcode'] as String?)?.trim();
+            if (resolvedBarcode != null && resolvedBarcode.isNotEmpty) {
+              _resolvedBarcode = resolvedBarcode;
+            }
             _existingName = data['product_name'] as String?;
             _nameController.text = _existingName ?? '';
             if (data['code_type'] != null) {
@@ -205,7 +211,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
     setState(() => _isSaving = true);
 
-    final barcode = widget.barcode;
+    final barcode = _resolvedBarcode;
     final productName = _nameController.text.trim();
     final rawQuantity = double.tryParse(_quantityController.text.trim()) ?? 1;
     var userNote = _noteController.text.trim();
@@ -523,7 +529,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                         ),
                         const SizedBox(height: 8),
                         SelectableText(
-                          widget.barcode,
+                          _resolvedBarcode,
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,

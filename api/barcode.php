@@ -93,6 +93,447 @@ function upsertStockProduct($db, $barcode, $codeType, $productName, $unit, $loca
     }
 }
 
+/**
+ * Normalizuje listę lokalizacji produktu.
+ *
+ * Każdy wpis ma postać: ['rack' => 'A', 'shelf' => 3]
+ * Puste wpisy są ignorowane, duplikaty są usuwane z zachowaniem kolejności.
+ */
+function normalizeLocations($locationsRaw) {
+    if ($locationsRaw === null) {
+        return [];
+    }
+
+    if (!is_array($locationsRaw)) {
+        throw new InvalidArgumentException('Pole locations musi być tablicą');
+    }
+
+    $normalized = [];
+    $seen = [];
+
+    foreach ($locationsRaw as $entry) {
+        if (!is_array($entry)) {
+            throw new InvalidArgumentException('Każda lokalizacja musi zawierać regał i półkę');
+        }
+
+        [$rack, $shelf] = normalizeLocation(
+            $entry['rack'] ?? null,
+            $entry['shelf'] ?? null
+        );
+
+        if ($rack === null || $shelf === null) {
+            continue;
+        }
+
+        $key = $rack . '#' . $shelf;
+        if (isset($seen[$key])) {
+            continue;
+        }
+
+        $seen[$key] = true;
+        $normalized[] = [
+            'rack' => $rack,
+            'shelf' => $shelf,
+        ];
+    }
+
+    return $normalized;
+}
+
+/**
+ * Wspiera zarówno nowy format `locations: [{rack, shelf}, ...]`,
+ * jak i legacy `location_rack` + `location_shelf`.
+ */
+function extractRequestedLocations($input) {
+    if (array_key_exists('locations', $input)) {
+        return normalizeLocations($input['locations']);
+    }
+
+    [$rack, $shelf] = normalizeLocation(
+        $input['location_rack'] ?? null,
+        $input['location_shelf'] ?? null
+    );
+
+    if ($rack === null || $shelf === null) {
+        return [];
+    }
+
+    return [[
+        'rack' => $rack,
+        'shelf' => $shelf,
+    ]];
+}
+
+function tableExists($db, $tableName) {
+    static $exists = [];
+
+    if (array_key_exists($tableName, $exists)) {
+        return $exists[$tableName];
+    }
+
+    if (!preg_match('/^[A-Za-z0-9_]+$/', $tableName)) {
+        $exists[$tableName] = false;
+        return false;
+    }
+
+    try {
+        $db->query("SELECT 1 FROM `{$tableName}` LIMIT 1");
+        $exists[$tableName] = true;
+    } catch (PDOException $e) {
+        $exists[$tableName] = false;
+    }
+
+    return $exists[$tableName];
+}
+
+function stockProductLocationsTableExists($db) {
+    return tableExists($db, 'stock_product_locations');
+}
+
+function stockProductsTableExists($db) {
+    return tableExists($db, 'stock_products');
+}
+
+function stockProductAliasesTableExists($db) {
+    return tableExists($db, 'stock_product_aliases');
+}
+
+function stockProductChangeLogTableExists($db) {
+    return tableExists($db, 'stock_product_change_log');
+}
+
+function resolveCanonicalBarcode($db, $barcode) {
+    $current = trim((string)$barcode);
+    if ($current === '' || !stockProductAliasesTableExists($db)) {
+        return $current;
+    }
+
+    $seen = [];
+
+    while ($current !== '' && !isset($seen[$current])) {
+        $seen[$current] = true;
+
+        $stmt = $db->prepare("SELECT canonical_barcode FROM stock_product_aliases WHERE alias_barcode = ? LIMIT 1");
+        $stmt->execute([$current]);
+        $next = $stmt->fetchColumn();
+
+        if (!is_string($next)) {
+            break;
+        }
+
+        $next = trim($next);
+        if ($next === '' || $next === $current) {
+            break;
+        }
+
+        $current = $next;
+    }
+
+    return $current;
+}
+
+function detectCodeType($barcode) {
+    $trimmed = trim((string)$barcode);
+    if (preg_match('/^\d{8,13}$/', $trimmed)) {
+        return 'barcode';
+    }
+
+    return 'product_code';
+}
+
+function appendProductSearchCondition($db, &$sql, array &$params, $search, $productNameExpression, $barcodeExpression) {
+    if ($search === '') {
+        return;
+    }
+
+    $searchParam = '%' . $search . '%';
+    $conditions = [
+        $productNameExpression . ' LIKE ?',
+        $barcodeExpression . ' LIKE ?',
+    ];
+    $params[] = $searchParam;
+    $params[] = $searchParam;
+
+    if (stockProductAliasesTableExists($db)) {
+        $conditions[] = "EXISTS (
+            SELECT 1
+            FROM stock_product_aliases spa
+            WHERE spa.canonical_barcode = {$barcodeExpression}
+              AND spa.alias_barcode LIKE ?
+        )";
+        $params[] = $searchParam;
+    }
+
+    $sql .= ' WHERE (' . implode(' OR ', $conditions) . ')';
+}
+
+function getProductSnapshot($db, $barcode) {
+    $barcode = trim((string)$barcode);
+    if ($barcode === '') {
+        return null;
+    }
+
+    if (stockProductsTableExists($db)) {
+        $stmt = $db->prepare("
+            SELECT barcode, code_type, product_name, unit
+            FROM stock_products
+            WHERE barcode = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$barcode]);
+        $row = $stmt->fetch();
+        if ($row) {
+            return $row;
+        }
+    }
+
+    $stmt = $db->prepare("
+        SELECT barcode, code_type, product_name, unit
+        FROM stock_movements
+        WHERE barcode = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+    ");
+    $stmt->execute([$barcode]);
+    $row = $stmt->fetch();
+
+    return $row ?: null;
+}
+
+function syncBarcodeAliasesAfterChange($db, $oldBarcode, $newBarcode) {
+    if (!stockProductAliasesTableExists($db)) {
+        return;
+    }
+
+    $stmt = $db->prepare("
+        UPDATE stock_product_aliases
+        SET canonical_barcode = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE canonical_barcode = ?
+    ");
+    $stmt->execute([$newBarcode, $oldBarcode]);
+
+    $stmt = $db->prepare("
+        INSERT INTO stock_product_aliases (alias_barcode, canonical_barcode)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE
+            canonical_barcode = VALUES(canonical_barcode),
+            updated_at = CURRENT_TIMESTAMP
+    ");
+    $stmt->execute([$oldBarcode, $newBarcode]);
+}
+
+function insertProductChangeLog(
+    $db,
+    $changeType,
+    $barcode,
+    $previousBarcode,
+    $newBarcode,
+    $previousName,
+    $newName,
+    $userId,
+    $userName
+) {
+    if (!stockProductChangeLogTableExists($db)) {
+        return;
+    }
+
+    if ($userName !== null && mb_strlen($userName) > 100) {
+        $userName = mb_substr($userName, 0, 100);
+    }
+
+    $stmt = $db->prepare("
+        INSERT INTO stock_product_change_log (
+            barcode,
+            change_type,
+            previous_barcode,
+            new_barcode,
+            previous_name,
+            new_name,
+            changed_by_user_id,
+            changed_by_user_name
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([
+        $barcode,
+        $changeType,
+        $previousBarcode,
+        $newBarcode,
+        $previousName,
+        $newName,
+        $userId,
+        $userName,
+    ]);
+}
+
+/**
+ * Zwraca listę lokalizacji produktu.
+ *
+ * Najpierw korzysta z tabeli stock_product_locations, a jeśli ta nie istnieje
+ * albo produkt nie ma jeszcze wpisów, robi fallback do legacy kolumn
+ * stock_products.location_rack/location_shelf.
+ */
+function getProductLocations($db, $barcode) {
+    if (stockProductLocationsTableExists($db)) {
+        $stmt = $db->prepare("
+            SELECT location_rack, location_shelf
+            FROM stock_product_locations
+            WHERE barcode = ?
+            ORDER BY sort_order ASC, id ASC
+        ");
+        $stmt->execute([$barcode]);
+        $rows = $stmt->fetchAll();
+
+        if (!empty($rows)) {
+            return array_map(function ($row) {
+                return [
+                    'rack' => $row['location_rack'],
+                    'shelf' => (int)$row['location_shelf'],
+                ];
+            }, $rows);
+        }
+    }
+
+    try {
+        $stmt = $db->prepare("
+            SELECT location_rack, location_shelf
+            FROM stock_products
+            WHERE barcode = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$barcode]);
+        $row = $stmt->fetch();
+    } catch (PDOException $e) {
+        return [];
+    }
+
+    if (!$row || $row['location_rack'] === null || $row['location_shelf'] === null) {
+        return [];
+    }
+
+    return [[
+        'rack' => $row['location_rack'],
+        'shelf' => (int)$row['location_shelf'],
+    ]];
+}
+
+/**
+ * Zwraca mapę barcode => lista lokalizacji. Używane do list/lookup bez N+1.
+ */
+function getLocationsMapForBarcodes($db, $barcodes) {
+    $map = [];
+
+    if (empty($barcodes)) {
+        return $map;
+    }
+
+    $uniqueBarcodes = array_values(array_unique(array_filter($barcodes, function ($barcode) {
+        return is_string($barcode) && $barcode !== '';
+    })));
+
+    if (empty($uniqueBarcodes)) {
+        return $map;
+    }
+
+    foreach ($uniqueBarcodes as $barcode) {
+        $map[$barcode] = [];
+    }
+
+    if (stockProductLocationsTableExists($db)) {
+        $placeholders = implode(',', array_fill(0, count($uniqueBarcodes), '?'));
+        $stmt = $db->prepare("
+            SELECT barcode, location_rack, location_shelf
+            FROM stock_product_locations
+            WHERE barcode IN ($placeholders)
+            ORDER BY barcode ASC, sort_order ASC, id ASC
+        ");
+        $stmt->execute($uniqueBarcodes);
+
+        foreach ($stmt->fetchAll() as $row) {
+            $map[$row['barcode']][] = [
+                'rack' => $row['location_rack'],
+                'shelf' => (int)$row['location_shelf'],
+            ];
+        }
+    }
+
+    $missing = array_values(array_filter($uniqueBarcodes, function ($barcode) use ($map) {
+        return empty($map[$barcode]);
+    }));
+
+    if (!empty($missing)) {
+        try {
+            $placeholders = implode(',', array_fill(0, count($missing), '?'));
+            $stmt = $db->prepare("
+                SELECT barcode, location_rack, location_shelf
+                FROM stock_products
+                WHERE barcode IN ($placeholders)
+            ");
+            $stmt->execute($missing);
+
+            foreach ($stmt->fetchAll() as $row) {
+                if ($row['location_rack'] === null || $row['location_shelf'] === null) {
+                    continue;
+                }
+                $map[$row['barcode']] = [[
+                    'rack' => $row['location_rack'],
+                    'shelf' => (int)$row['location_shelf'],
+                ]];
+            }
+        } catch (PDOException $e) {
+            // Legacy tabela może nie istnieć jeszcze przy częściowych migracjach.
+        }
+    }
+
+    return $map;
+}
+
+/**
+ * Zapisuje pełną listę lokalizacji produktu.
+ *
+ * Dla zgodności ze starszymi klientami pierwsza lokalizacja jest też kopiowana
+ * do legacy kolumn stock_products.location_rack/location_shelf.
+ */
+function saveProductLocations($db, $barcode, $locations) {
+    $primary = !empty($locations) ? $locations[0] : null;
+    $primaryRack = $primary['rack'] ?? null;
+    $primaryShelf = $primary['shelf'] ?? null;
+
+    if (stockProductLocationsTableExists($db)) {
+        $stmt = $db->prepare("DELETE FROM stock_product_locations WHERE barcode = ?");
+        $stmt->execute([$barcode]);
+
+        if (!empty($locations)) {
+            $stmt = $db->prepare("
+                INSERT INTO stock_product_locations (barcode, location_rack, location_shelf, sort_order)
+                VALUES (?, ?, ?, ?)
+            ");
+
+            foreach ($locations as $index => $location) {
+                $stmt->execute([
+                    $barcode,
+                    $location['rack'],
+                    $location['shelf'],
+                    $index,
+                ]);
+            }
+        }
+    } elseif (count($locations) > 1) {
+        throw new PDOException('Aby zapisać więcej niż jedną lokalizację, uruchom migrację tabeli stock_product_locations.');
+    }
+
+    try {
+        $stmt = $db->prepare("
+            UPDATE stock_products
+            SET location_rack = ?, location_shelf = ?
+            WHERE barcode = ?
+        ");
+        $stmt->execute([$primaryRack, $primaryShelf, $barcode]);
+    } catch (PDOException $e) {
+        // stock_products może jeszcze nie istnieć w świeżo migrowanym środowisku.
+    }
+}
+
 switch ($method) {
     case 'POST':
         handlePost($db);
@@ -155,13 +596,17 @@ function handlePost($db) {
         ? (float)$input['min_quantity']
         : null;
 
-    // Lokalizacja (opcjonalnie — tylko przy ręcznym dodaniu nowego produktu).
-    // Jeśli oba puste → NULL/NULL i pole w tabeli nie zostanie nadpisane.
+    $barcode = resolveCanonicalBarcode($db, $barcode);
+    $existingProduct = getProductSnapshot($db, $barcode);
+    if ($existingProduct) {
+        $productName = $existingProduct['product_name'] ?? $productName;
+        $codeType = $existingProduct['code_type'] ?? $codeType;
+    }
+
+    // Lokalizacje (opcjonalnie). Wspieramy zarówno nową listę `locations`,
+    // jak i legacy parę `location_rack` + `location_shelf`.
     try {
-        [$locationRack, $locationShelf] = normalizeLocation(
-            $input['location_rack'] ?? null,
-            $input['location_shelf'] ?? null
-        );
+        $locations = extractRequestedLocations($input);
     } catch (InvalidArgumentException $e) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
@@ -272,10 +717,23 @@ function handlePost($db) {
     // Synchronizuj słownik produktów (stock_products). Lokalizacja nadpisywana
     // tylko jeśli przekazana — zwykłe ruchy magazynowe nie czyszczą jej.
     try {
-        upsertStockProduct($db, $barcode, $codeType, $productName, $unit, $locationRack, $locationShelf);
+        $primaryLocation = !empty($locations) ? $locations[0] : null;
+        upsertStockProduct(
+            $db,
+            $barcode,
+            $codeType,
+            $productName,
+            $unit,
+            $primaryLocation['rack'] ?? null,
+            $primaryLocation['shelf'] ?? null
+        );
+
+        if (!empty($locations)) {
+            saveProductLocations($db, $barcode, $locations);
+        }
     } catch (PDOException $e) {
         // Tabela stock_products jeszcze nie istnieje — nie blokuj zapisu ruchu.
-        // (Wymagana migracja: api/setup_database.sql sekcja 8.)
+        // (Wymagana migracja: api/setup_database.sql sekcja 8/9.)
     }
 
     // Upsert minimalnego stanu (opcjonalnie). Tylko jeśli klient go podał.
@@ -334,39 +792,15 @@ function handleGet($db) {
             return;
         }
 
-        try {
-            $stmt = $db->prepare("
-                SELECT barcode, product_name, unit, location_rack, location_shelf
-                FROM stock_products
-                WHERE barcode = ?
-                LIMIT 1
-            ");
-            $stmt->execute([$barcode]);
-            $row = $stmt->fetch();
-        } catch (PDOException $e) {
-            // Tabela stock_products jeszcze nie istnieje
+        $barcode = resolveCanonicalBarcode($db, $barcode);
+        $row = getProductSnapshot($db, $barcode);
+        if (!$row) {
             echo json_encode(['success' => true, 'exists' => false, 'product' => null]);
             return;
         }
 
-        if (!$row) {
-            // Spróbuj fallback: produkt może być tylko w stock_movements (legacy, przed backfillem)
-            $stmt = $db->prepare("
-                SELECT barcode, product_name, unit
-                FROM stock_movements
-                WHERE barcode = ?
-                ORDER BY created_at DESC
-                LIMIT 1
-            ");
-            $stmt->execute([$barcode]);
-            $row = $stmt->fetch();
-            if (!$row) {
-                echo json_encode(['success' => true, 'exists' => false, 'product' => null]);
-                return;
-            }
-            $row['location_rack'] = null;
-            $row['location_shelf'] = null;
-        }
+        $locations = getProductLocations($db, $barcode);
+        $primary = !empty($locations) ? $locations[0] : null;
 
         echo json_encode([
             'success' => true,
@@ -375,8 +809,10 @@ function handleGet($db) {
                 'barcode' => $row['barcode'],
                 'product_name' => $row['product_name'],
                 'unit' => $row['unit'],
-                'location_rack' => $row['location_rack'],
-                'location_shelf' => $row['location_shelf'] !== null ? (int)$row['location_shelf'] : null,
+                'location_rack' => $primary['rack'] ?? null,
+                'location_shelf' => $primary['shelf'] ?? null,
+                'locations' => $locations,
+                'locations_count' => count($locations),
             ],
         ]);
         return;
@@ -453,18 +889,19 @@ function handleGet($db) {
             $stmt = $db->prepare("
                 SELECT
                     sm.barcode,
-                    MAX(sm.product_name) AS product_name,
+                    COALESCE(sp.product_name, MAX(sm.product_name)) AS product_name,
                     sm.unit,
                     COALESCE(SUM(CASE WHEN sm.movement_type = 'in' THEN sm.quantity ELSE 0 END), 0)
                     - COALESCE(SUM(CASE WHEN sm.movement_type = 'out' THEN sm.quantity ELSE 0 END), 0) AS current_stock,
                     sps.min_quantity
                 FROM stock_movements sm
+                LEFT JOIN stock_products sp ON sp.barcode = sm.barcode
                 LEFT JOIN stock_product_settings sps
                        ON sps.barcode = sm.barcode AND sps.unit = sm.unit
-                GROUP BY sm.barcode, sm.unit, sps.min_quantity
+                GROUP BY sm.barcode, sm.unit, sps.min_quantity, sp.product_name
                 HAVING current_stock < COALESCE(sps.min_quantity, 5)
                    AND COALESCE(sps.min_quantity, 5) > 0
-                ORDER BY current_stock ASC, MAX(sm.product_name) ASC
+                ORDER BY current_stock ASC, product_name ASC
                 LIMIT 50
             ");
             $stmt->execute();
@@ -500,7 +937,7 @@ function handleGet($db) {
         $sql = "
             SELECT
                 sm.barcode,
-                MAX(sm.product_name) AS product_name,
+                COALESCE(sp.product_name, MAX(sm.product_name)) AS product_name,
                 sm.unit,
                 COALESCE(SUM(CASE WHEN sm.movement_type = 'in' THEN sm.quantity ELSE 0 END), 0)
                 - COALESCE(SUM(CASE WHEN sm.movement_type = 'out' THEN sm.quantity ELSE 0 END), 0) AS current_stock,
@@ -511,15 +948,18 @@ function handleGet($db) {
         ";
         $params = [];
 
-        if ($search !== '') {
-            $sql .= " WHERE (sm.product_name LIKE ? OR sm.barcode LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-        }
+        appendProductSearchCondition(
+            $db,
+            $sql,
+            $params,
+            $search,
+            'COALESCE(sp.product_name, sm.product_name)',
+            'sm.barcode'
+        );
 
-        $sql .= " GROUP BY sm.barcode, sm.unit, sp.location_rack, sp.location_shelf
+        $sql .= " GROUP BY sm.barcode, sm.unit, sp.product_name, sp.location_rack, sp.location_shelf
                    HAVING current_stock > 0
-                   ORDER BY MAX(sm.product_name) ASC";
+               ORDER BY product_name ASC";
 
         try {
             $stmt = $db->prepare($sql);
@@ -538,16 +978,34 @@ function handleGet($db) {
                     NULL AS location_shelf
                 FROM stock_movements
             ";
-            if ($search !== '') {
-                $sqlFallback .= " WHERE (product_name LIKE ? OR barcode LIKE ?)";
-            }
+            $fallbackParams = [];
+            appendProductSearchCondition(
+                $db,
+                $sqlFallback,
+                $fallbackParams,
+                $search,
+                'product_name',
+                'barcode'
+            );
             $sqlFallback .= " GROUP BY barcode, unit
                                HAVING current_stock > 0
                                ORDER BY MAX(product_name) ASC";
             $stmt = $db->prepare($sqlFallback);
-            $stmt->execute($params);
+            $stmt->execute($fallbackParams);
             $parts = $stmt->fetchAll();
         }
+
+        $locationsMap = getLocationsMapForBarcodes($db, array_column($parts, 'barcode'));
+        foreach ($parts as &$part) {
+            $locations = $locationsMap[$part['barcode']] ?? [];
+            $part['locations'] = $locations;
+            $part['locations_count'] = count($locations);
+            if (!empty($locations)) {
+                $part['location_rack'] = $locations[0]['rack'];
+                $part['location_shelf'] = $locations[0]['shelf'];
+            }
+        }
+        unset($part);
 
         echo json_encode(['success' => true, 'parts' => $parts]);
         return;
@@ -560,8 +1018,8 @@ function handleGet($db) {
         $sql = "
             SELECT
                 sm.barcode,
-                MAX(sm.product_name) AS product_name,
-                MAX(sm.code_type) AS code_type,
+                COALESCE(sp.product_name, MAX(sm.product_name)) AS product_name,
+                COALESCE(sp.code_type, MAX(sm.code_type)) AS code_type,
                 sm.unit,
                 COALESCE(SUM(CASE WHEN sm.movement_type = 'in' THEN sm.quantity ELSE 0 END), 0) AS total_in,
                 COALESCE(SUM(CASE WHEN sm.movement_type = 'out' THEN sm.quantity ELSE 0 END), 0) AS total_out,
@@ -578,13 +1036,16 @@ function handleGet($db) {
         ";
         $params = [];
 
-        if ($search !== '') {
-            $sql .= " WHERE (sm.product_name LIKE ? OR sm.barcode LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-        }
+        appendProductSearchCondition(
+            $db,
+            $sql,
+            $params,
+            $search,
+            'COALESCE(sp.product_name, sm.product_name)',
+            'sm.barcode'
+        );
 
-        $sql .= " GROUP BY sm.barcode, sm.unit, sp.location_rack, sp.location_shelf, sps.min_quantity ORDER BY MAX(sm.created_at) DESC";
+        $sql .= " GROUP BY sm.barcode, sm.unit, sp.product_name, sp.code_type, sp.location_rack, sp.location_shelf, sps.min_quantity ORDER BY MAX(sm.created_at) DESC";
 
         try {
             $stmt = $db->prepare($sql);
@@ -607,14 +1068,32 @@ function handleGet($db) {
                     NULL AS location_shelf
                 FROM stock_movements
             ";
-            if ($search !== '') {
-                $sqlFallback .= " WHERE (product_name LIKE ? OR barcode LIKE ?)";
-            }
+            $fallbackParams = [];
+            appendProductSearchCondition(
+                $db,
+                $sqlFallback,
+                $fallbackParams,
+                $search,
+                'product_name',
+                'barcode'
+            );
             $sqlFallback .= " GROUP BY barcode, unit ORDER BY MAX(created_at) DESC";
             $stmt = $db->prepare($sqlFallback);
-            $stmt->execute($params);
+            $stmt->execute($fallbackParams);
             $products = $stmt->fetchAll();
         }
+
+        $locationsMap = getLocationsMapForBarcodes($db, array_column($products, 'barcode'));
+        foreach ($products as &$product) {
+            $locations = $locationsMap[$product['barcode']] ?? [];
+            $product['locations'] = $locations;
+            $product['locations_count'] = count($locations);
+            if (!empty($locations)) {
+                $product['location_rack'] = $locations[0]['rack'];
+                $product['location_shelf'] = $locations[0]['shelf'];
+            }
+        }
+        unset($product);
 
         echo json_encode(['success' => true, 'products' => $products]);
         return;
@@ -630,6 +1109,7 @@ function handleGet($db) {
     }
 
     $barcode = trim($_GET['barcode']);
+    $barcode = resolveCanonicalBarcode($db, $barcode);
 
     // Pobierz podsumowanie stanów (po jednostkach) wraz z minimalnym stanem
     try {
@@ -667,16 +1147,7 @@ function handleGet($db) {
         $stockByUnit = $stmt->fetchAll();
     }
 
-    // Pobierz ostatnią nazwę produktu i typ kodu
-    $stmt = $db->prepare("
-        SELECT product_name, code_type
-        FROM stock_movements
-        WHERE barcode = ?
-        ORDER BY created_at DESC
-        LIMIT 1
-    ");
-    $stmt->execute([$barcode]);
-    $latest = $stmt->fetch();
+    $latest = getProductSnapshot($db, $barcode);
 
     // Pobierz ostatnie 20 ruchów
     try {
@@ -703,20 +1174,8 @@ function handleGet($db) {
     }
 
     if ($latest) {
-        // Pobierz lokalizację jeśli istnieje wpis w stock_products
-        $locationRack = null;
-        $locationShelf = null;
-        try {
-            $stmt = $db->prepare("SELECT location_rack, location_shelf FROM stock_products WHERE barcode = ? LIMIT 1");
-            $stmt->execute([$barcode]);
-            $loc = $stmt->fetch();
-            if ($loc) {
-                $locationRack = $loc['location_rack'];
-                $locationShelf = $loc['location_shelf'] !== null ? (int)$loc['location_shelf'] : null;
-            }
-        } catch (PDOException $e) {
-            // Tabela jeszcze nie istnieje — zostawiamy null
-        }
+        $locations = getProductLocations($db, $barcode);
+        $primary = !empty($locations) ? $locations[0] : null;
 
         echo json_encode([
             'success' => true,
@@ -725,8 +1184,10 @@ function handleGet($db) {
                 'barcode' => $barcode,
                 'product_name' => $latest['product_name'],
                 'code_type' => $latest['code_type'],
-                'location_rack' => $locationRack,
-                'location_shelf' => $locationShelf,
+                'location_rack' => $primary['rack'] ?? null,
+                'location_shelf' => $primary['shelf'] ?? null,
+                'locations' => $locations,
+                'locations_count' => count($locations),
             ],
             'stock' => $stockByUnit,
             'movements' => $movements,
@@ -766,6 +1227,11 @@ function handlePut($db) {
         return;
     }
 
+    if ($action === 'change_barcode') {
+        handleChangeBarcode($db, $input);
+        return;
+    }
+
     if (empty($input['barcode']) || empty($input['new_name'])) {
         http_response_code(400);
         echo json_encode([
@@ -775,19 +1241,17 @@ function handlePut($db) {
         return;
     }
 
-    $barcode = trim($input['barcode']);
+    $barcode = resolveCanonicalBarcode($db, trim($input['barcode']));
     $newName = trim($input['new_name']);
+    $userId = isset($input['user_id']) ? (int)$input['user_id'] : null;
+    $userName = isset($input['user_name']) ? trim($input['user_name']) : null;
 
     if (mb_strlen($newName) > 255) {
         $newName = mb_substr($newName, 0, 255);
     }
 
-    // Sprawdź czy produkt istnieje
-    $stmt = $db->prepare("SELECT COUNT(*) AS cnt FROM stock_movements WHERE barcode = ?");
-    $stmt->execute([$barcode]);
-    $row = $stmt->fetch();
-
-    if ((int)$row['cnt'] === 0) {
+    $currentProduct = getProductSnapshot($db, $barcode);
+    if (!$currentProduct) {
         http_response_code(404);
         echo json_encode([
             'success' => false,
@@ -796,16 +1260,42 @@ function handlePut($db) {
         return;
     }
 
-    // Zaktualizuj nazwę we wszystkich ruchach z tym kodem
-    $stmt = $db->prepare("UPDATE stock_movements SET product_name = ? WHERE barcode = ?");
-    $stmt->execute([$newName, $barcode]);
+    $previousName = $currentProduct['product_name'] ?? null;
 
-    // Zaktualizuj również słownik stock_products (jeśli tabela istnieje)
     try {
-        $stmt = $db->prepare("UPDATE stock_products SET product_name = ? WHERE barcode = ?");
+        $db->beginTransaction();
+
+        $stmt = $db->prepare("UPDATE stock_movements SET product_name = ? WHERE barcode = ?");
         $stmt->execute([$newName, $barcode]);
+
+        if (stockProductsTableExists($db)) {
+            $stmt = $db->prepare("UPDATE stock_products SET product_name = ? WHERE barcode = ?");
+            $stmt->execute([$newName, $barcode]);
+        }
+
+        insertProductChangeLog(
+            $db,
+            'rename',
+            $barcode,
+            $barcode,
+            $barcode,
+            $previousName,
+            $newName,
+            $userId,
+            $userName
+        );
+
+        $db->commit();
     } catch (PDOException $e) {
-        // Tabela jeszcze nie istnieje — pomiń
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Błąd bazy danych: ' . $e->getMessage(),
+        ]);
+        return;
     }
 
     echo json_encode([
@@ -814,20 +1304,26 @@ function handlePut($db) {
         'data' => [
             'barcode' => $barcode,
             'product_name' => $newName,
+            'code_type' => $currentProduct['code_type'] ?? detectCodeType($barcode),
         ]
     ]);
 }
 
 /**
- * PUT action=set_location — ustaw/wyczyść lokalizację produktu.
+ * PUT action=set_location — ustaw/wyczyść lokalizacje produktu.
  *
  * Body (JSON):
  *   {
  *     "action": "set_location",
  *     "barcode": "5901234123457",
- *     "location_rack": "A",       // lub null/"" aby wyczyścić
- *     "location_shelf": 0          // 0-99, lub null/"" aby wyczyścić
+ *     "locations": [
+ *       {"rack": "A", "shelf": 0},
+ *       {"rack": "A", "shelf": 1}
+ *     ]
  *   }
+ *
+ * Wspierany jest też format legacy z pojedynczą parą
+ * `location_rack` + `location_shelf`.
  */
 function handleSetLocation($db, $input) {
     if (empty($input['barcode'])) {
@@ -836,13 +1332,10 @@ function handleSetLocation($db, $input) {
         return;
     }
 
-    $barcode = trim($input['barcode']);
+    $barcode = resolveCanonicalBarcode($db, trim($input['barcode']));
 
     try {
-        [$rack, $shelf] = normalizeLocation(
-            $input['location_rack'] ?? null,
-            $input['location_shelf'] ?? null
-        );
+        $locations = extractRequestedLocations($input);
     } catch (InvalidArgumentException $e) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
@@ -850,52 +1343,61 @@ function handleSetLocation($db, $input) {
     }
 
     // Upewnij się, że produkt istnieje (w stock_products lub stock_movements)
-    try {
-        $stmt = $db->prepare("SELECT 1 FROM stock_products WHERE barcode = ? LIMIT 1");
-        $stmt->execute([$barcode]);
-        $exists = (bool)$stmt->fetchColumn();
-    } catch (PDOException $e) {
+    if (!stockProductsTableExists($db)) {
         http_response_code(500);
         echo json_encode([
             'success' => false,
-            'error' => 'Tabela stock_products nie istnieje. Uruchom migrację (api/setup_database.sql sekcja 8).'
+            'error' => 'Tabela stock_products nie istnieje. Uruchom migrację (api/setup_database.sql sekcja 8/9).'
         ]);
         return;
     }
 
+    $stmt = $db->prepare("SELECT 1 FROM stock_products WHERE barcode = ? LIMIT 1");
+    $stmt->execute([$barcode]);
+    $exists = (bool)$stmt->fetchColumn();
+
     if (!$exists) {
         // Spróbuj utworzyć wpis na podstawie ostatniego ruchu w stock_movements
-        $stmt = $db->prepare("
-            SELECT product_name, code_type, unit
-            FROM stock_movements
-            WHERE barcode = ?
-            ORDER BY created_at DESC
-            LIMIT 1
-        ");
-        $stmt->execute([$barcode]);
-        $base = $stmt->fetch();
+        $base = getProductSnapshot($db, $barcode);
         if (!$base) {
             http_response_code(404);
             echo json_encode(['success' => false, 'error' => 'Produkt o podanym kodzie nie istnieje']);
             return;
         }
-        upsertStockProduct($db, $barcode, $base['code_type'], $base['product_name'], $base['unit'], $rack, $shelf);
-    } else {
-        $stmt = $db->prepare("
-            UPDATE stock_products
-            SET location_rack = ?, location_shelf = ?
-            WHERE barcode = ?
-        ");
-        $stmt->execute([$rack, $shelf, $barcode]);
+        $primary = !empty($locations) ? $locations[0] : null;
+        upsertStockProduct(
+            $db,
+            $barcode,
+            $base['code_type'],
+            $base['product_name'],
+            $base['unit'],
+            $primary['rack'] ?? null,
+            $primary['shelf'] ?? null
+        );
     }
+
+    try {
+        saveProductLocations($db, $barcode, $locations);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage(),
+        ]);
+        return;
+    }
+
+    $primary = !empty($locations) ? $locations[0] : null;
 
     echo json_encode([
         'success' => true,
         'message' => 'Lokalizacja zaktualizowana',
         'data' => [
             'barcode' => $barcode,
-            'location_rack' => $rack,
-            'location_shelf' => $shelf,
+            'location_rack' => $primary['rack'] ?? null,
+            'location_shelf' => $primary['shelf'] ?? null,
+            'locations' => $locations,
+            'locations_count' => count($locations),
         ],
     ]);
 }
@@ -919,7 +1421,7 @@ function handleSetMinQuantity($db, $input) {
         return;
     }
 
-    $barcode = trim($input['barcode']);
+    $barcode = resolveCanonicalBarcode($db, trim($input['barcode']));
     $unit = isset($input['unit']) ? trim($input['unit']) : 'szt';
     $userId = isset($input['user_id']) ? (int)$input['user_id'] : null;
 
@@ -968,6 +1470,182 @@ function handleSetMinQuantity($db, $input) {
             'data' => ['barcode' => $barcode, 'unit' => $unit, 'min_quantity' => $minQuantity],
         ]);
     } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Błąd bazy danych: ' . $e->getMessage(),
+        ]);
+    }
+}
+
+/**
+ * PUT action=change_barcode — zmień kod produktu (wszędzie tam gdzie występuje).
+ *
+ * Body (JSON):
+ *   {
+ *     "action": "change_barcode",
+ *     "barcode": "5901234123457",        // stary kod
+ *     "new_barcode": "5901234999999",     // nowy kod (musi być wolny)
+ *     "new_name": "Nowa nazwa produktu"   // opcjonalnie, w tej samej transakcji
+ *   }
+ *
+ * Aktualizuje atomowo (transakcja) tabele:
+ *   - stock_movements
+ *   - stock_products
+ *   - stock_product_settings (jeśli istnieje)
+ */
+function handleChangeBarcode($db, $input) {
+    if (empty($input['barcode']) || empty($input['new_barcode'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Wymagane pola: barcode, new_barcode']);
+        return;
+    }
+
+    $oldBarcode = resolveCanonicalBarcode($db, trim($input['barcode']));
+    $newBarcode = trim($input['new_barcode']);
+    $hasNewName = array_key_exists('new_name', $input);
+    $newName = $hasNewName ? trim((string)$input['new_name']) : null;
+    $userId = isset($input['user_id']) ? (int)$input['user_id'] : null;
+    $userName = isset($input['user_name']) ? trim($input['user_name']) : null;
+
+    if ($oldBarcode === $newBarcode) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Nowy kod jest taki sam jak stary']);
+        return;
+    }
+
+    if (mb_strlen($newBarcode) < 1 || mb_strlen($newBarcode) > 128) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Nowy kod musi mieć od 1 do 128 znaków']);
+        return;
+    }
+
+    if (!preg_match('/^[A-Za-z0-9._\-]+$/', $newBarcode)) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Nowy kod może zawierać tylko litery, cyfry oraz znaki . _ -'
+        ]);
+        return;
+    }
+
+    if ($hasNewName) {
+        if ($newName === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Nowa nazwa produktu nie może być pusta']);
+            return;
+        }
+        if (mb_strlen($newName) > 255) {
+            $newName = mb_substr($newName, 0, 255);
+        }
+    }
+
+    $currentProduct = getProductSnapshot($db, $oldBarcode);
+    if (!$currentProduct) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Produkt o podanym kodzie nie istnieje']);
+        return;
+    }
+
+    $previousName = $currentProduct['product_name'] ?? null;
+    $updatedName = $hasNewName ? $newName : $previousName;
+    $newCodeType = detectCodeType($newBarcode);
+
+    if (resolveCanonicalBarcode($db, $newBarcode) !== $newBarcode) {
+        http_response_code(409);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Nowy kod jest już zarezerwowany jako historyczny alias produktu'
+        ]);
+        return;
+    }
+
+    // Nowy kod musi być wolny — sprawdź w stock_movements i stock_products
+    $stmt = $db->prepare("SELECT COUNT(*) FROM stock_movements WHERE barcode = ?");
+    $stmt->execute([$newBarcode]);
+    $existsInMov = (int)$stmt->fetchColumn() > 0;
+
+    $existsInProd = false;
+    if (stockProductsTableExists($db)) {
+        $stmt = $db->prepare("SELECT COUNT(*) FROM stock_products WHERE barcode = ?");
+        $stmt->execute([$newBarcode]);
+        $existsInProd = (int)$stmt->fetchColumn() > 0;
+    }
+
+    if ($existsInMov || $existsInProd) {
+        http_response_code(409);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Nowy kod jest już używany przez inny produkt'
+        ]);
+        return;
+    }
+
+    try {
+        $db->beginTransaction();
+
+        $stmt = $db->prepare("UPDATE stock_movements SET barcode = ?, code_type = ?, product_name = ? WHERE barcode = ?");
+        $stmt->execute([$newBarcode, $newCodeType, $updatedName, $oldBarcode]);
+
+        if (stockProductsTableExists($db)) {
+            $stmt = $db->prepare("UPDATE stock_products SET barcode = ?, code_type = ?, product_name = ? WHERE barcode = ?");
+            $stmt->execute([$newBarcode, $newCodeType, $updatedName, $oldBarcode]);
+        }
+
+        if (tableExists($db, 'stock_product_settings')) {
+            $stmt = $db->prepare("UPDATE stock_product_settings SET barcode = ? WHERE barcode = ?");
+            $stmt->execute([$newBarcode, $oldBarcode]);
+        }
+
+        if (stockProductLocationsTableExists($db)) {
+            $stmt = $db->prepare("UPDATE stock_product_locations SET barcode = ? WHERE barcode = ?");
+            $stmt->execute([$newBarcode, $oldBarcode]);
+        }
+
+        syncBarcodeAliasesAfterChange($db, $oldBarcode, $newBarcode);
+
+        if ($updatedName !== $previousName) {
+            insertProductChangeLog(
+                $db,
+                'rename',
+                $newBarcode,
+                $oldBarcode,
+                $newBarcode,
+                $previousName,
+                $updatedName,
+                $userId,
+                $userName
+            );
+        }
+
+        insertProductChangeLog(
+            $db,
+            'change_barcode',
+            $newBarcode,
+            $oldBarcode,
+            $newBarcode,
+            $previousName,
+            $updatedName,
+            $userId,
+            $userName
+        );
+
+        $db->commit();
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Kod produktu został zmieniony',
+            'data' => [
+                'old_barcode' => $oldBarcode,
+                'barcode' => $newBarcode,
+                'product_name' => $updatedName,
+                'code_type' => $newCodeType,
+            ],
+        ]);
+    } catch (PDOException $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         http_response_code(500);
         echo json_encode([
             'success' => false,

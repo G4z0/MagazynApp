@@ -35,19 +35,8 @@ CREATE TABLE IF NOT EXISTS `stock_movements` (
 -- =============================================================
 -- 2. Widok podsumowania stanów magazynowych
 -- =============================================================
-CREATE OR REPLACE VIEW `stock_summary` AS
-SELECT
-    sm.barcode,
-    sm.code_type,
-    (SELECT sm2.product_name FROM stock_movements sm2
-     WHERE sm2.barcode = sm.barcode ORDER BY sm2.created_at DESC LIMIT 1) AS product_name,
-    sm.unit,
-    COALESCE(SUM(CASE WHEN sm.movement_type = 'in' THEN sm.quantity ELSE 0 END), 0) AS total_in,
-    COALESCE(SUM(CASE WHEN sm.movement_type = 'out' THEN sm.quantity ELSE 0 END), 0) AS total_out,
-    COALESCE(SUM(CASE WHEN sm.movement_type = 'in' THEN sm.quantity ELSE 0 END), 0)
-    - COALESCE(SUM(CASE WHEN sm.movement_type = 'out' THEN sm.quantity ELSE 0 END), 0) AS current_stock
-FROM stock_movements sm
-GROUP BY sm.barcode, sm.code_type, sm.unit;
+-- Definicja widoku znajduje się w sekcji 12, po utworzeniu `stock_products`,
+-- aby nazwa i typ kodu pochodziły z kanonicznego słownika produktów.
 
 -- =============================================================
 -- Migracja z istniejącej bazy (uruchom ręcznie jeśli potrzebne):
@@ -157,3 +146,88 @@ INNER JOIN (
     GROUP BY barcode
 ) latest ON latest.max_id = sm.id
 GROUP BY sm.barcode, sm.code_type, sm.product_name, sm.unit;
+
+-- =============================================================
+-- 9. Tabela stock_product_locations — wiele lokalizacji dla jednego produktu
+--    Uwaga: pierwsza lokalizacja nadal jest kopiowana do stock_products,
+--    żeby zachować zgodność ze starszymi klientami mobilnymi.
+-- =============================================================
+CREATE TABLE IF NOT EXISTS `stock_product_locations` (
+        `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `barcode`        VARCHAR(128) NOT NULL,
+        `location_rack`  VARCHAR(2) NOT NULL,
+        `location_shelf` TINYINT UNSIGNED NOT NULL,
+        `sort_order`     SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+        `created_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `updated_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uniq_product_location` (`barcode`, `location_rack`, `location_shelf`),
+        KEY `idx_product_sort` (`barcode`, `sort_order`),
+        KEY `idx_location_lookup` (`location_rack`, `location_shelf`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Backfill z legacy kolumn stock_products.location_rack/location_shelf.
+INSERT IGNORE INTO `stock_product_locations` (`barcode`, `location_rack`, `location_shelf`, `sort_order`)
+SELECT
+        sp.barcode,
+        sp.location_rack,
+        sp.location_shelf,
+        0
+FROM `stock_products` sp
+WHERE sp.location_rack IS NOT NULL
+    AND sp.location_shelf IS NOT NULL;
+
+-- =============================================================
+-- 10. Alias historycznych kodów produktu
+--     Pozwala przepinać stare kody na aktualny rekord produktu
+--     i zapobiega przypadkowemu odtworzeniu starego produktu.
+-- =============================================================
+CREATE TABLE IF NOT EXISTS `stock_product_aliases` (
+    `alias_barcode`     VARCHAR(128) NOT NULL,
+    `canonical_barcode` VARCHAR(128) NOT NULL,
+    `created_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`alias_barcode`),
+    KEY `idx_canonical_barcode` (`canonical_barcode`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================================
+-- 11. Audyt zmian nazwy i kodu produktu
+--     Historia biznesowa jest zapisywana osobno, nawet jeśli ruchy
+--     magazynowe są przepinane na nowy kod / nazwę.
+-- =============================================================
+CREATE TABLE IF NOT EXISTS `stock_product_change_log` (
+    `id`                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `barcode`             VARCHAR(128) NOT NULL,
+    `change_type`         ENUM('rename', 'change_barcode') NOT NULL,
+    `previous_barcode`    VARCHAR(128) DEFAULT NULL,
+    `new_barcode`         VARCHAR(128) DEFAULT NULL,
+    `previous_name`       VARCHAR(255) DEFAULT NULL,
+    `new_name`            VARCHAR(255) DEFAULT NULL,
+    `changed_by_user_id`  INT DEFAULT NULL,
+    `changed_by_user_name` VARCHAR(100) DEFAULT NULL,
+    `changed_at`          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_change_barcode` (`barcode`),
+    KEY `idx_change_type` (`change_type`),
+    KEY `idx_changed_at` (`changed_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================================
+-- 12. Kanoniczny widok stanów magazynowych
+--     Nazwa / typ kodu pochodzą ze słownika stock_products,
+--     a nie z losowego MAX(product_name) z historii ruchów.
+-- =============================================================
+CREATE OR REPLACE VIEW `stock_summary` AS
+SELECT
+    sm.barcode,
+    COALESCE(sp.code_type, MAX(sm.code_type)) AS code_type,
+    COALESCE(sp.product_name, MAX(sm.product_name)) AS product_name,
+    sm.unit,
+    COALESCE(SUM(CASE WHEN sm.movement_type = 'in' THEN sm.quantity ELSE 0 END), 0) AS total_in,
+    COALESCE(SUM(CASE WHEN sm.movement_type = 'out' THEN sm.quantity ELSE 0 END), 0) AS total_out,
+    COALESCE(SUM(CASE WHEN sm.movement_type = 'in' THEN sm.quantity ELSE 0 END), 0)
+    - COALESCE(SUM(CASE WHEN sm.movement_type = 'out' THEN sm.quantity ELSE 0 END), 0) AS current_stock
+FROM stock_movements sm
+LEFT JOIN stock_products sp ON sp.barcode = sm.barcode
+GROUP BY sm.barcode, sm.unit, sp.code_type, sp.product_name;

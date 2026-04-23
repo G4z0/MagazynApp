@@ -114,7 +114,7 @@ class ApiService {
   /// Zwraca mapę z kluczami: data, stock (lista po jednostkach), movements (historia).
   static Future<Map<String, dynamic>?> checkBarcode(String barcode) async {
     try {
-      final uri = Uri.parse('$_endpoint?barcode=$barcode');
+      final uri = Uri.parse('$_endpoint?barcode=${Uri.encodeComponent(barcode)}');
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
@@ -237,41 +237,63 @@ class ApiService {
     }
   }
 
-  /// Zmień nazwę produktu (aktualizuje product_name we wszystkich ruchach z danym barcode).
-  static Future<bool> renameProduct({
+  /// Zmień nazwę produktu i zwróć potwierdzone dane produktu.
+  static Future<Map<String, dynamic>> renameProduct({
     required String barcode,
     required String newName,
   }) async {
     try {
+      final auth = AuthService();
+      final body = <String, dynamic>{
+        'barcode': barcode,
+        'new_name': newName,
+      };
+      if (auth.userId != null) {
+        body['user_id'] = auth.userId;
+      }
+      if (auth.displayName != null) {
+        body['user_name'] = auth.displayName;
+      }
+
       final response = await http
           .put(
             Uri.parse(_endpoint),
             headers: {'Content-Type': 'application/json; charset=utf-8'},
-            body: jsonEncode({
-              'barcode': barcode,
-              'new_name': newName,
-            }),
+            body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 10));
 
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        return data['success'] == true;
+        if (data['success'] == true) {
+          return Map<String, dynamic>.from(data['data'] as Map? ?? const {});
+        }
+        throw ApiException(data['error'] ?? tr('ERROR_UNKNOWN'));
       }
-      return false;
-    } catch (_) {
-      return false;
+      if (response.statusCode >= 400 && response.statusCode < 500) {
+        throw ApiException(data['error'] ?? tr('ERROR_UNKNOWN'));
+      }
+      throw NetworkException(
+        tr('ERROR_SERVER_STATUS', args: {'code': '${response.statusCode}'}),
+      );
+    } on http.ClientException {
+      throw NetworkException(tr('ERROR_NO_CONNECTION'));
+    } on FormatException {
+      throw ApiException(tr('ERROR_INVALID_RESPONSE'));
     }
   }
 
-  /// Ustaw lokalizację produktu (regał + półka). Aby wyczyścić — przekaż null/null.
+  /// Ustaw pełną listę lokalizacji produktu.
+  ///
+  /// Każdy wpis ma postać `{rack: 'A', shelf: 3}`.
+  /// Pusta lista czyści lokalizacje produktu.
   ///
   /// Rzuca [ApiException] dla błędów walidacji/biznesowych (4xx)
   /// oraz [NetworkException] dla błędów sieci/timeoutu/5xx.
-  static Future<void> setProductLocation({
+  static Future<void> setProductLocations({
     required String barcode,
-    required String? rack,
-    required int? shelf,
+    required List<Map<String, dynamic>> locations,
   }) async {
     try {
       final response = await http
@@ -281,8 +303,7 @@ class ApiService {
             body: jsonEncode({
               'action': 'set_location',
               'barcode': barcode,
-              'location_rack': rack,
-              'location_shelf': shelf,
+              'locations': locations,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -304,6 +325,20 @@ class ApiService {
     } on FormatException {
       throw ApiException(tr('ERROR_INVALID_RESPONSE'));
     }
+  }
+
+  /// Kompatybilny wrapper dla starszego wywołania pojedynczej lokalizacji.
+  static Future<void> setProductLocation({
+    required String barcode,
+    required String? rack,
+    required int? shelf,
+  }) {
+    final locations = (rack != null && rack.isNotEmpty && shelf != null)
+        ? <Map<String, dynamic>>[
+            {'rack': rack, 'shelf': shelf}
+          ]
+        : <Map<String, dynamic>>[];
+    return setProductLocations(barcode: barcode, locations: locations);
   }
 
   /// Ustaw lub usuń minimalny stan magazynowy dla pary (barcode, unit).
@@ -354,10 +389,66 @@ class ApiService {
     }
   }
 
-  /// Pobierz lokalizację produktu po kodzie (funkcja "lupa").
+  /// Zmień kod produktu (atomowo aktualizuje stock_movements + stock_products
+  /// + stock_product_settings).
   ///
-  /// Zwraca mapę `{barcode, product_name, unit, location_rack, location_shelf}`
-  /// gdy produkt istnieje (lokalizacja może być null), lub `null` gdy nie istnieje.
+  /// Rzuca [ApiException] dla błędów 4xx (kolizja kodu, walidacja),
+  /// [NetworkException] dla braku sieci / 5xx.
+  static Future<Map<String, dynamic>> changeBarcode({
+    required String oldBarcode,
+    required String newBarcode,
+    String? newName,
+  }) async {
+    try {
+      final auth = AuthService();
+      final body = <String, dynamic>{
+        'action': 'change_barcode',
+        'barcode': oldBarcode,
+        'new_barcode': newBarcode,
+      };
+      if (newName != null && newName.trim().isNotEmpty) {
+        body['new_name'] = newName.trim();
+      }
+      if (auth.userId != null) {
+        body['user_id'] = auth.userId;
+      }
+      if (auth.displayName != null) {
+        body['user_name'] = auth.displayName;
+      }
+
+      final response = await http
+          .put(
+            Uri.parse(_endpoint),
+            headers: {'Content-Type': 'application/json; charset=utf-8'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        if (data['success'] == true) {
+          return Map<String, dynamic>.from(data['data'] as Map? ?? const {});
+        }
+        throw ApiException(data['error'] ?? tr('ERROR_UNKNOWN'));
+      }
+      if (response.statusCode >= 400 && response.statusCode < 500) {
+        throw ApiException(data['error'] ?? tr('ERROR_UNKNOWN'));
+      }
+      throw NetworkException(
+        tr('ERROR_SERVER_STATUS', args: {'code': '${response.statusCode}'}),
+      );
+    } on http.ClientException {
+      throw NetworkException(tr('ERROR_NO_CONNECTION'));
+    } on FormatException {
+      throw ApiException(tr('ERROR_INVALID_RESPONSE'));
+    }
+  }
+
+  /// Pobierz lokalizacje produktu po kodzie (funkcja "lupa").
+  ///
+  /// Zwraca mapę zawierającą także `locations: [{rack, shelf}, ...]`
+  /// gdy produkt istnieje, lub `null` gdy nie istnieje.
   /// Rzuca [NetworkException] przy braku łączności.
   static Future<Map<String, dynamic>?> getProductLocation(
       String barcode) async {

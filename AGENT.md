@@ -1,7 +1,7 @@
-# CLAUDE.md — MagazynApp (Warsztat - LogisticsERP)
+# AGENT.md — MagazynApp (Warsztat - LogisticsERP)
 
 Ten plik opisuje, jak pracować w tym repo. Czytaj go przed każdą większą zmianą.
-Aktualny stan projektu (ekrany, serwisy, endpointy, schemat DB) jest w `PODSUMOWANIE.md` — traktuj ten plik jako źródło prawdy o **architekturze**, a `CLAUDE.md` jako źródło prawdy o **sposobie pracy**.
+Aktualny stan projektu (ekrany, serwisy, endpointy, schemat DB) jest w `PODSUMOWANIE.md` — traktuj ten plik jako źródło prawdy o **architekturze**, a `AGENT.md` jako źródło prawdy o **sposobie pracy**.
 
 ---
 

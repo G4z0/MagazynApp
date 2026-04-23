@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -30,7 +31,7 @@ class OfflineQueueService {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       p.join(dbPath, 'offline_queue.db'),
-      version: 8,
+      version: 9,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE queue (
@@ -52,6 +53,7 @@ class OfflineQueueService {
             driver_name TEXT,
             location_rack TEXT,
             location_shelf INTEGER,
+            locations_json TEXT,
             min_quantity REAL,
             created_at TEXT NOT NULL
           )
@@ -116,6 +118,12 @@ class OfflineQueueService {
           // v8: obsługa minimalnych stanów w kolejce offline.
           await db.execute(
             "ALTER TABLE queue ADD COLUMN min_quantity REAL",
+          );
+        }
+        if (oldVersion < 9) {
+          // v9: wiele lokalizacji produktu w jednej zmianie.
+          await db.execute(
+            "ALTER TABLE queue ADD COLUMN locations_json TEXT",
           );
         }
       },
@@ -183,12 +191,10 @@ class OfflineQueueService {
     await _refreshCount();
   }
 
-  /// Dodaj zmianę lokalizacji do kolejki offline.
-  /// [rack]/[shelf] = null/null oznacza wyczyszczenie lokalizacji.
-  Future<void> enqueueSetLocation({
+  /// Dodaj zmianę pełnej listy lokalizacji do kolejki offline.
+  Future<void> enqueueSetLocations({
     required String barcode,
-    required String? rack,
-    required int? shelf,
+    required List<Map<String, dynamic>> locations,
   }) async {
     final db = await database;
     final auth = AuthService();
@@ -203,11 +209,24 @@ class OfflineQueueService {
       'unit': 'szt',
       'user_id': auth.userId,
       'user_name': auth.displayName,
-      'location_rack': rack,
-      'location_shelf': shelf,
+      'locations_json': jsonEncode(locations),
       'created_at': DateTime.now().toIso8601String(),
     });
     await _refreshCount();
+  }
+
+  /// Kompatybilny wrapper dla starszego pojedynczego slotu.
+  Future<void> enqueueSetLocation({
+    required String barcode,
+    required String? rack,
+    required int? shelf,
+  }) {
+    final locations = (rack != null && rack.isNotEmpty && shelf != null)
+        ? <Map<String, dynamic>>[
+            {'rack': rack, 'shelf': shelf}
+          ]
+        : <Map<String, dynamic>>[];
+    return enqueueSetLocations(barcode: barcode, locations: locations);
   }
 
   /// Dodaj zmianę minimalnego stanu do kolejki offline.
@@ -248,10 +267,23 @@ class OfflineQueueService {
           final actionType = (item['action_type'] as String?) ?? 'save_product';
 
           if (actionType == 'set_location') {
-            await ApiService.setProductLocation(
+            final locationsJson = item['locations_json'] as String?;
+            final locations = (locationsJson != null && locationsJson.isNotEmpty)
+                ? List<Map<String, dynamic>>.from(
+                    jsonDecode(locationsJson) as List,
+                  )
+                : ((item['location_rack'] != null && item['location_shelf'] != null)
+                    ? <Map<String, dynamic>>[
+                        {
+                          'rack': item['location_rack'] as String,
+                          'shelf': item['location_shelf'] as int,
+                        }
+                      ]
+                    : <Map<String, dynamic>>[]);
+
+            await ApiService.setProductLocations(
               barcode: item['barcode'] as String,
-              rack: item['location_rack'] as String?,
-              shelf: item['location_shelf'] as int?,
+              locations: locations,
             );
           } else if (actionType == 'set_min_quantity') {
             await ApiService.setMinQuantity(

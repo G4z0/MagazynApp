@@ -26,12 +26,9 @@ class _IssueItem {
     this.quantity = 1,
     this.unit = 'szt',
     required this.codeType,
-    this.note,
     this.location,
     this.isLoading = false,
-    this.isIssued = false,
-    this.error,
-  });
+  }) : isIssued = false;
 }
 
 /// Ekran wsadowego wydawania produktów.
@@ -275,12 +272,17 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
     // Pobierz dane z API
     try {
       final result = await ApiService.checkBarcode(barcode);
+      var mergedWithExisting = false;
       if (!mounted) return;
       setState(() {
         item.isLoading = false;
         if (result != null) {
           final data = result['data'] as Map<String, dynamic>?;
           if (data != null) {
+            final canonicalBarcode = (data['barcode'] as String?)?.trim();
+            if (canonicalBarcode != null && canonicalBarcode.isNotEmpty) {
+              item.barcode = canonicalBarcode;
+            }
             item.productName = data['product_name'] as String? ?? '';
             if (data['code_type'] != null) {
               item.codeType = CodeType.fromApi(data['code_type'] as String);
@@ -302,8 +304,31 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
               item.unit = stockList.first['unit'] as String? ?? 'szt';
             }
           }
+
+          final canonicalIndex = _items.indexWhere(
+            (existing) => !identical(existing, item) &&
+                existing.barcode == item.barcode &&
+                !existing.isIssued,
+          );
+          if (canonicalIndex != -1) {
+            final existing = _items[canonicalIndex];
+            existing.quantity += item.quantity;
+            if (item.productName.isNotEmpty) {
+              existing.productName = item.productName;
+            }
+            existing.codeType = item.codeType;
+            existing.unit = item.unit;
+            existing.location ??= item.location;
+            existing.isLoading = false;
+            existing.error = null;
+            _items.remove(item);
+            mergedWithExisting = true;
+          }
         }
       });
+      if (mergedWithExisting) {
+        _showSnackBar(tr('BATCH_ITEM_QTY_INCREASED'));
+      }
     } catch (_) {
       if (mounted) {
         setState(() => item.isLoading = false);
@@ -545,15 +570,6 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
     final v = double.tryParse(qty.toString()) ?? 0;
     return v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
   }
-
-  static const List<({String value, String key})> _unitOptions = [
-    (value: 'szt', key: 'UNIT_PIECES'),
-    (value: 'opak', key: 'UNIT_PACKAGES'),
-    (value: 'l', key: 'UNIT_LITRES'),
-    (value: 'kg', key: 'UNIT_KILOGRAMS'),
-    (value: 'm', key: 'UNIT_METRES'),
-    (value: 'kpl', key: 'UNIT_SETS'),
-  ];
 
   @override
   Widget build(BuildContext context) {

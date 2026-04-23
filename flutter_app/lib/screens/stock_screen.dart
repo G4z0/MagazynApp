@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../l10n/translations.dart';
 import '../services/api_service.dart';
-import '../services/local_history_service.dart';
 import '../services/offline_queue_service.dart';
+import '../models/code_type.dart';
+import 'product_edit_screen.dart';
 import 'product_form_screen.dart';
 
 /// Ekran stanów magazynowych — lista produktów z aktualnym stanem.
@@ -231,8 +232,7 @@ class _StockScreenState extends State<StockScreen> {
         : (double.tryParse(minQuantityRaw.toString()) ?? 0);
     final bool hasMin = minQuantity != null && minQuantity > 0;
     final isLow = hasMin ? currentStock < minQuantity : currentStock <= 0;
-    final locationLabel =
-        _formatLocation(product['location_rack'], product['location_shelf']);
+    final locationLabel = _formatLocationsChip(_extractLocations(product));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -397,6 +397,11 @@ class _StockScreenState extends State<StockScreen> {
     if (!mounted || result == null) return;
 
     final data = result['data'] as Map<String, dynamic>?;
+    final canonicalBarcode = (data?['barcode'] as String?)?.trim();
+    final effectiveBarcode =
+      (canonicalBarcode != null && canonicalBarcode.isNotEmpty)
+        ? canonicalBarcode
+        : barcode;
     final movements = result['movements'] as List? ?? [];
     final stockList = result['stock'] as List? ?? [];
 
@@ -445,33 +450,17 @@ class _StockScreenState extends State<StockScreen> {
                   IconButton(
                     onPressed: () {
                       Navigator.pop(ctx);
-                      _showRenameDialog(
-                        barcode,
-                        data['product_name'] ?? '',
+                      _openEditScreen(
+                        barcode: effectiveBarcode,
+                        productName: data['product_name'] ?? '',
+                        codeType: CodeType.fromApi(
+                            data['code_type'] as String?),
+                        locations: _extractLocations(data),
+                        stockByUnit: stockList,
                       );
                     },
                     icon: const Icon(Icons.edit, color: accent, size: 20),
-                    tooltip: tr('STOCK_RENAME_PRODUCT'),
-                    padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 36, minHeight: 36),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      _showEditLocationDialog(
-                        barcode,
-                        data['location_rack'] as String?,
-                        data['location_shelf'] is int
-                            ? data['location_shelf'] as int?
-                            : (data['location_shelf'] != null
-                                ? int.tryParse(
-                                    data['location_shelf'].toString())
-                                : null),
-                      );
-                    },
-                    icon: const Icon(Icons.pin_drop, color: accent, size: 20),
-                    tooltip: tr('STOCK_EDIT_LOCATION'),
+                    tooltip: tr('EDIT_PRODUCT_TITLE'),
                     padding: EdgeInsets.zero,
                     constraints:
                         const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -487,28 +476,55 @@ class _StockScreenState extends State<StockScreen> {
                   fontSize: 14,
                 ),
               ),
-              if (_formatLocation(
-                      data['location_rack'], data['location_shelf']) !=
-                  null) ...[
+              if (_extractLocations(data).isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Icon(Icons.pin_drop, color: accent, size: 16),
                     const SizedBox(width: 6),
-                    Text(
-                      '${tr('LOCATION_LABEL')}: ',
-                      style:
-                          const TextStyle(color: secondaryText, fontSize: 13),
-                    ),
-                    Text(
-                      _formatLocation(
-                              data['location_rack'], data['location_shelf']) ??
-                          '',
-                      style: const TextStyle(
-                        color: accent,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'monospace',
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${tr('LOCATION_LABEL')}:',
+                            style: const TextStyle(
+                                color: secondaryText, fontSize: 13),
+                          ),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: _extractLocations(data)
+                                .map(
+                                  (location) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: accent.withAlpha(30),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                          color: accent.withAlpha(90)),
+                                    ),
+                                    child: Text(
+                                      _formatLocation(
+                                            location['rack'],
+                                            location['shelf'],
+                                          ) ??
+                                          '',
+                                      style: const TextStyle(
+                                        color: accent,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        fontFamily: 'monospace',
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -563,7 +579,11 @@ class _StockScreenState extends State<StockScreen> {
                         TextButton.icon(
                           onPressed: () {
                             Navigator.pop(ctx);
-                            _showEditMinStockDialog(barcode, unit, minVal);
+                            _showEditMinStockDialog(
+                              effectiveBarcode,
+                              unit,
+                              minVal,
+                            );
                           },
                           icon: const Icon(Icons.edit,
                               size: 16, color: accent),
@@ -596,7 +616,7 @@ class _StockScreenState extends State<StockScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => ProductFormScreen(
-                          barcode: barcode,
+                          barcode: effectiveBarcode,
                           initialMovementType: 'out',
                         ),
                       ),
@@ -703,74 +723,27 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
-  Future<void> _showRenameDialog(String barcode, String currentName) async {
-    final controller = TextEditingController(text: currentName);
-    final newName = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2F3A),
-        title: Text(
-          tr('STOCK_RENAME_PRODUCT'),
-          style: const TextStyle(color: Colors.white),
+  Future<void> _openEditScreen({
+    required String barcode,
+    required String productName,
+    required CodeType codeType,
+    required List<Map<String, dynamic>> locations,
+    required List stockByUnit,
+  }) async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductEditScreen(
+          barcode: barcode,
+          productName: productName,
+          codeType: codeType,
+          locations: locations,
+          stockByUnit: stockByUnit,
         ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: tr('STOCK_RENAME_HINT'),
-            hintStyle: const TextStyle(color: Colors.white38),
-            filled: true,
-            fillColor: const Color(0xFF1C1E26),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(tr('BUTTON_CANCEL'),
-                style: const TextStyle(color: Colors.white54)),
-          ),
-          FilledButton(
-            onPressed: () {
-              final value = controller.text.trim();
-              if (value.isNotEmpty) {
-                Navigator.pop(ctx, value);
-              }
-            },
-            style: FilledButton.styleFrom(backgroundColor: accent),
-            child: Text(tr('BUTTON_SAVE'),
-                style: const TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
-    controller.dispose();
-
-    if (newName == null || newName == currentName) return;
-
-    final success =
-        await ApiService.renameProduct(barcode: barcode, newName: newName);
-    if (mounted) {
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(tr('STOCK_RENAME_SUCCESS')),
-            backgroundColor: Colors.green.shade700,
-          ),
-        );
-        _loadProducts(search: _searchController.text.trim());
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(tr('STOCK_RENAME_ERROR')),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
-      }
+    if (changed == true && mounted) {
+      _loadProducts(search: _searchController.text.trim());
     }
   }
 
@@ -783,66 +756,55 @@ class _StockScreenState extends State<StockScreen> {
     return '$rackStr$shelfInt';
   }
 
-  Future<void> _showEditLocationDialog(
-    String barcode,
-    String? currentRack,
-    int? currentShelf,
-  ) async {
-    final result = await showDialog<({String? rack, int? shelf})>(
-      context: context,
-      builder: (ctx) => _LocationEditDialog(
-        initialRack: currentRack,
-        initialShelf: currentShelf,
-        accent: accent,
-      ),
-    );
+  List<Map<String, dynamic>> _extractLocations(Map<String, dynamic>? source) {
+    if (source == null) return const [];
 
-    if (result == null) return;
-    final rack = result.rack;
-    final shelf = result.shelf;
+    final rawLocations = source['locations'];
+    if (rawLocations is List) {
+      final locations = <Map<String, dynamic>>[];
+      final seen = <String>{};
 
-    try {
-      await ApiService.setProductLocation(
-          barcode: barcode, rack: rack, shelf: shelf);
-      await LocalHistoryService().add(
-        actionType: 'set_location',
-        title: tr('LOCATION_EDIT_TITLE'),
-        subtitle: '${rack ?? '-'}${shelf ?? ''} — $barcode',
-        barcode: barcode,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(tr('LOCATION_SAVED')),
-            backgroundColor: Colors.green.shade700,
-          ),
-        );
-        _loadProducts(search: _searchController.text.trim());
+      for (final raw in rawLocations) {
+        final location = Map<String, dynamic>.from(raw as Map);
+        final rack = location['rack']?.toString().trim().toUpperCase();
+        final shelf = int.tryParse(location['shelf'].toString());
+        if (rack == null || rack.isEmpty || shelf == null) continue;
+        final key = '$rack#$shelf';
+        if (seen.add(key)) {
+          locations.add({'rack': rack, 'shelf': shelf});
+        }
       }
-    } on NetworkException {
-      await OfflineQueueService().enqueueSetLocation(
-        barcode: barcode,
-        rack: rack,
-        shelf: shelf,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(tr('LOCATION_QUEUED')),
-            backgroundColor: Colors.orange.shade800,
-          ),
-        );
-      }
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.message),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
+
+      if (locations.isNotEmpty) {
+        return locations;
       }
     }
+
+    final legacy = _formatLocation(source['location_rack'], source['location_shelf']);
+    if (legacy == null) return const [];
+
+    return [
+      {
+        'rack': source['location_rack']?.toString(),
+        'shelf': int.tryParse(source['location_shelf'].toString()),
+      }
+    ];
+  }
+
+  String? _formatLocationsChip(List<Map<String, dynamic>> locations) {
+    if (locations.isEmpty) return null;
+    final first = _formatLocation(locations[0]['rack'], locations[0]['shelf']);
+    if (first == null) return null;
+    if (locations.length == 1) return first;
+    return '$first +${locations.length - 1}';
+  }
+
+  String _formatLocationsSummary(List<Map<String, dynamic>> locations) {
+    if (locations.isEmpty) return tr('LOCATION_NONE');
+    return locations
+        .map((location) => _formatLocation(location['rack'], location['shelf']))
+        .whereType<String>()
+        .join(', ');
   }
 
   Future<void> _showEditMinStockDialog(
@@ -1096,8 +1058,7 @@ class _StockScreenState extends State<StockScreen> {
       return;
     }
 
-    final loc =
-        _formatLocation(product['location_rack'], product['location_shelf']);
+    final locations = _extractLocations(product);
     final pname = product['product_name'] ?? tr('PRODUCT_NO_NAME');
     final pbarcode = product['barcode']?.toString() ?? code;
 
@@ -1106,7 +1067,7 @@ class _StockScreenState extends State<StockScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF2C2F3A),
         icon: Icon(
-          loc != null ? Icons.pin_drop : Icons.location_off,
+          locations.isNotEmpty ? Icons.pin_drop : Icons.location_off,
           color: accent,
           size: 48,
         ),
@@ -1129,16 +1090,26 @@ class _StockScreenState extends State<StockScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: accent.withAlpha(80)),
               ),
-              child: Text(
-                loc ?? tr('LOCATION_NONE'),
-                style: TextStyle(
-                  color: loc != null ? accent : Colors.white54,
-                  fontSize: loc != null ? 32 : 16,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                  letterSpacing: 3,
-                ),
-              ),
+              child: locations.isEmpty
+                  ? Text(
+                      tr('LOCATION_NONE'),
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : Text(
+                      _formatLocationsSummary(locations),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: accent,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace',
+                        letterSpacing: 1.5,
+                      ),
+                    ),
             ),
           ],
         ),
@@ -1173,165 +1144,5 @@ class _StockScreenState extends State<StockScreen> {
     if (count == 1) return tr('PRODUCT_SINGULAR');
     if (count >= 2 && count <= 4) return tr('PRODUCT_PLURAL_FEW');
     return tr('PRODUCT_PLURAL_MANY');
-  }
-}
-
-/// Dialog edycji lokalizacji (regał + półka).
-///
-/// Wyodrębniony jako [StatefulWidget], żeby [TextEditingController]-y żyły
-/// w [State] i były dispose'owane dopiero w [State.dispose()] — czyli już
-/// po zakończeniu animacji zamykania dialogu. Wcześniej dispose tuż po
-/// `Navigator.pop` powodował, że pola w jeszcze-zamykającym-się [Form]
-/// odwoływały się do zwolnionych kontrolerów, co kończyło się
-/// asercją `_dependents.isEmpty` w `InheritedElement.debugDeactivated`.
-class _LocationEditDialog extends StatefulWidget {
-  const _LocationEditDialog({
-    required this.initialRack,
-    required this.initialShelf,
-    required this.accent,
-  });
-
-  final String? initialRack;
-  final int? initialShelf;
-  final Color accent;
-
-  @override
-  State<_LocationEditDialog> createState() => _LocationEditDialogState();
-}
-
-class _LocationEditDialogState extends State<_LocationEditDialog> {
-  late final TextEditingController _rackCtrl;
-  late final TextEditingController _shelfCtrl;
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  @override
-  void initState() {
-    super.initState();
-    _rackCtrl = TextEditingController(text: widget.initialRack ?? '');
-    _shelfCtrl =
-        TextEditingController(text: widget.initialShelf?.toString() ?? '');
-  }
-
-  @override
-  void dispose() {
-    _rackCtrl.dispose();
-    _shelfCtrl.dispose();
-    super.dispose();
-  }
-
-  void _onSave() {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    final rackOut = _rackCtrl.text.trim().toUpperCase();
-    final shelfOut = _shelfCtrl.text.trim();
-    final String? rack = rackOut.isEmpty ? null : rackOut;
-    final int? shelf = shelfOut.isEmpty ? null : int.tryParse(shelfOut);
-    Navigator.pop<({String? rack, int? shelf})>(
-        context, (rack: rack, shelf: shelf));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF2C2F3A),
-      title: Text(tr('LOCATION_EDIT_TITLE'),
-          style: const TextStyle(color: Colors.white)),
-      content: Form(
-        key: _formKey,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 2,
-              child: TextFormField(
-                controller: _rackCtrl,
-                textCapitalization: TextCapitalization.characters,
-                style: const TextStyle(color: Colors.white, letterSpacing: 2),
-                inputFormatters: [
-                  LengthLimitingTextInputFormatter(2),
-                  FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
-                  TextInputFormatter.withFunction(
-                      (o, n) => n.copyWith(text: n.text.toUpperCase())),
-                ],
-                decoration: InputDecoration(
-                  labelText: tr('LOCATION_RACK'),
-                  labelStyle: const TextStyle(color: Colors.white54),
-                  hintText: tr('LOCATION_HINT_RACK'),
-                  hintStyle: const TextStyle(color: Colors.white24),
-                  filled: true,
-                  fillColor: const Color(0xFF1C1E26),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                validator: (v) {
-                  final rack = (v ?? '').trim();
-                  final shelf = _shelfCtrl.text.trim();
-                  if (rack.isEmpty && shelf.isEmpty) return null;
-                  if (rack.isEmpty) {
-                    return tr('LOCATION_VALIDATION_BOTH_REQUIRED');
-                  }
-                  if (!RegExp(r'^[A-Z]{1,2}$').hasMatch(rack)) {
-                    return tr('LOCATION_VALIDATION_RACK');
-                  }
-                  return null;
-                },
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 2,
-              child: TextFormField(
-                controller: _shelfCtrl,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
-                inputFormatters: [
-                  LengthLimitingTextInputFormatter(2),
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
-                decoration: InputDecoration(
-                  labelText: tr('LOCATION_SHELF'),
-                  labelStyle: const TextStyle(color: Colors.white54),
-                  hintText: tr('LOCATION_HINT_SHELF'),
-                  hintStyle: const TextStyle(color: Colors.white24),
-                  filled: true,
-                  fillColor: const Color(0xFF1C1E26),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                validator: (v) {
-                  final shelf = (v ?? '').trim();
-                  final rack = _rackCtrl.text.trim();
-                  if (rack.isEmpty && shelf.isEmpty) return null;
-                  if (shelf.isEmpty) {
-                    return tr('LOCATION_VALIDATION_BOTH_REQUIRED');
-                  }
-                  final n = int.tryParse(shelf);
-                  if (n == null || n < 0 || n > 99) {
-                    return tr('LOCATION_VALIDATION_SHELF');
-                  }
-                  return null;
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(tr('BUTTON_CANCEL'),
-              style: const TextStyle(color: Colors.white54)),
-        ),
-        FilledButton(
-          onPressed: _onSave,
-          style: FilledButton.styleFrom(backgroundColor: widget.accent),
-          child: Text(tr('BUTTON_SAVE'),
-              style: const TextStyle(color: Colors.white)),
-        ),
-      ],
-    );
   }
 }
