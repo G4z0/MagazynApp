@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../l10n/translations.dart';
 import '../models/issue_target_preset.dart';
 import '../services/local_history_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 import 'scanner_screen.dart';
 
 /// Ekran historii działań wykonanych NA TYM urządzeniu.
@@ -13,9 +15,9 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  static const Color _accent = Color(0xFF3498DB);
-  static const Color _cardBg = Color(0xFF2C2F3A);
-  static const Color _secondaryText = Color(0xFFA0A5B1);
+  static const Color _accent = AppColors.accent;
+  static const Color _cardBg = AppColors.cardBg;
+  static const Color _secondaryText = AppColors.secondaryText;
 
   List<Map<String, dynamic>> _items = [];
   bool _isLoading = true;
@@ -154,27 +156,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return SafeArea(
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-            child: Row(
-              children: [
-                Text(
-                  tr('HISTORY_TITLE'),
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold),
+          AppScreenHeader(
+            title: tr('HISTORY_TITLE'),
+            actions: [
+              if (_items.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: _secondaryText),
+                  onPressed: _clearHistory,
+                  tooltip: tr('TOOLTIP_CLEAR_HISTORY'),
                 ),
-                const Spacer(),
-                if (_items.isNotEmpty)
-                  IconButton(
-                    icon:
-                        const Icon(Icons.delete_outline, color: _secondaryText),
-                    onPressed: _clearHistory,
-                    tooltip: tr('TOOLTIP_CLEAR_HISTORY'),
-                  ),
-              ],
-            ),
+            ],
           ),
           Expanded(child: _buildContent()),
         ],
@@ -187,22 +178,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       return const Center(child: CircularProgressIndicator(color: _accent));
     }
     if (_items.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.history, color: Color(0xFFA0A5B1), size: 64),
-            const SizedBox(height: 12),
-            Text(tr('HISTORY_EMPTY_TITLE'),
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Text(tr('HISTORY_EMPTY_SUBTITLE'),
-                style: const TextStyle(color: Color(0xFFA0A5B1), fontSize: 13)),
-          ],
-        ),
+      return AppEmptyState(
+        icon: Icons.history,
+        title: tr('HISTORY_EMPTY_TITLE'),
+        subtitle: tr('HISTORY_EMPTY_SUBTITLE'),
       );
     }
     return RefreshIndicator(

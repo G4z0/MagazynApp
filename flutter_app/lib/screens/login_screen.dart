@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/translations.dart';
 import '../services/auth_service.dart';
 import '../services/local_history_service.dart';
+import '../theme/app_theme.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -19,11 +20,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   String? _errorMessage;
 
-  static const Color _accent = Color(0xFF3498DB);
-  static const Color _darkBg = Color(0xFF1C1E26);
-  static const Color _cardBg = Color(0xFF2C2F3A);
-  static const Color _inputBg = Color(0xFF23262E);
-  static const Color _secondaryText = Color(0xFFA0A5B1);
+  static const Color _accent = AppColors.accent;
+  static const Color _darkBg = AppColors.darkBg;
+  static const Color _inputBg = AppColors.inputBg;
+  static const Color _secondaryText = AppColors.secondaryText;
 
   @override
   void dispose() {
@@ -159,10 +159,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty)
+                      if (v == null || v.trim().isEmpty) {
                         return tr('VALIDATION_EMAIL_REQUIRED');
-                      if (!v.contains('@'))
+                      }
+                      if (!v.contains('@')) {
                         return tr('VALIDATION_EMAIL_INVALID');
+                      }
                       return null;
                     },
                     textInputAction: TextInputAction.next,
@@ -202,8 +204,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty)
+                      if (v == null || v.isEmpty) {
                         return tr('VALIDATION_PASSWORD_REQUIRED');
+                      }
                       return null;
                     },
                     onFieldSubmitted: (_) => _login(),

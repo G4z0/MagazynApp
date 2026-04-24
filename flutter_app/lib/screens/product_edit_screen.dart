@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../l10n/translations.dart';
 import '../models/code_type.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 import 'scanner_screen.dart';
 import '../services/api_service.dart';
 import '../services/local_history_service.dart';
@@ -28,9 +30,9 @@ class ProductEditScreen extends StatefulWidget {
 }
 
 class _ProductEditScreenState extends State<ProductEditScreen> {
-  static const Color accent = Color(0xFF3498DB);
-  static const Color cardBg = Color(0xFF2C2F3A);
-  static const Color sheetBg = Color(0xFF1C1E26);
+  static const Color accent = AppColors.accent;
+  static const Color cardBg = AppColors.cardBg;
+  static const Color sheetBg = AppColors.darkBg;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -110,8 +112,9 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     return result;
   }
 
-  String _locationsSignature(List<Map<String, dynamic>> locations) =>
-      locations.map((location) => '${location['rack']}#${location['shelf']}').join('|');
+  String _locationsSignature(List<Map<String, dynamic>> locations) => locations
+      .map((location) => '${location['rack']}#${location['shelf']}')
+      .join('|');
 
   String _locationsSummary(List<Map<String, dynamic>> locations) {
     if (locations.isEmpty) {
@@ -313,8 +316,8 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
 
     final nameChanged = newName != _currentProductName;
     final barcodeChanged = newBarcode != _currentBarcode;
-    final locChanged =
-        _locationsSignature(newLocations) != _locationsSignature(_currentLocations);
+    final locChanged = _locationsSignature(newLocations) !=
+        _locationsSignature(_currentLocations);
 
     final corrections = <_QtyCorrection>[];
     for (final entry in _qtyCtrls.entries) {
@@ -579,10 +582,11 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
                           ),
                           inputFormatters: [
                             LengthLimitingTextInputFormatter(2),
-                            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
+                            FilteringTextInputFormatter.allow(
+                                RegExp(r'[A-Za-z]')),
                             TextInputFormatter.withFunction(
-                              (oldValue, newValue) =>
-                                  newValue.copyWith(text: newValue.text.toUpperCase()),
+                              (oldValue, newValue) => newValue.copyWith(
+                                  text: newValue.text.toUpperCase()),
                             ),
                           ],
                           decoration: _inputDecoration(
@@ -616,7 +620,8 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
                                 setState(() {});
                               }
                             : () => _removeLocationRow(index),
-                        icon: const Icon(Icons.delete_outline, color: Colors.white54),
+                        icon: const Icon(Icons.delete_outline,
+                            color: Colors.white54),
                         tooltip: tr('LOCATION_REMOVE_BUTTON'),
                       ),
                     ],
@@ -685,11 +690,12 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: e.value,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
                             style: const TextStyle(color: Colors.white),
                             inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                              FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9.,]')),
                             ],
                             decoration: _inputDecoration(
                               label: tr('EDIT_QTY_NEW'),
@@ -714,34 +720,11 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
                 ),
               ]),
             const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _isSaving ? null : _save,
-              icon: _isSaving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.save, color: Colors.white),
-              label: Text(
-                tr('BUTTON_SAVE'),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: accent,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                minimumSize: const Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+            AppPrimaryButton(
+              onPressed: _save,
+              isLoading: _isSaving,
+              icon: Icons.save,
+              label: tr('BUTTON_SAVE'),
             ),
           ],
         ),
@@ -749,18 +732,8 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String text) => Padding(
-        padding: const EdgeInsets.only(left: 4, bottom: 8),
-        child: Text(
-          text.toUpperCase(),
-          style: const TextStyle(
-            color: Colors.white54,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-          ),
-        ),
-      );
+  Widget _buildSectionTitle(String text) =>
+      AppSectionTitle(text, uppercase: true);
 
   Widget _buildCard(List<Widget> children) => Container(
         padding: const EdgeInsets.all(14),

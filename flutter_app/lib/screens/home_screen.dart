@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../l10n/translations.dart';
 import '../services/auth_service.dart';
 import '../services/offline_queue_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
+import '../widgets/product_location_lookup.dart';
 import 'batch_issue_screen.dart';
 import 'manual_product_screen.dart';
 import 'scanner_screen.dart';
@@ -19,12 +22,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  bool _stockLowStockOnly = false;
 
-  static const Color accent = Color(0xFF3498DB);
-  static const Color cardBg = Color(0xFF2C2F3A);
-  static const Color darkBg = Color(0xFF1C1E26);
-  static const Color secondaryText = Color(0xFFA0A5B1);
-  static const Color sidebarBg = Color(0xFF23262E);
+  static const Color accent = AppColors.accent;
 
   @override
   void initState() {
@@ -59,6 +59,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _openStock({bool lowStockOnly = false}) {
+    setState(() {
+      _stockLowStockOnly = lowStockOnly;
+      _currentIndex = 1;
+    });
+  }
+
+  void _openLocationLookup() {
+    showProductLocationLookup(context);
+  }
+
+  void _openLowStock() => _openStock(lowStockOnly: true);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,7 +79,10 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _currentIndex,
         children: [
           _buildDashboard(),
-          const StockScreen(),
+          StockScreen(
+            showLowStockOnly: _stockLowStockOnly,
+            onShowAllStock: () => _openStock(),
+          ),
           const SizedBox(), // placeholder for scanner (opens as push)
           const HistoryScreen(),
           const SettingsScreen(),
@@ -80,75 +96,24 @@ class _HomeScreenState extends State<HomeScreen> {
     return SafeArea(
       child: CustomScrollView(
         slivers: [
-          // Header
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: accent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.warehouse,
-                        color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${tr('HOME_GREETING')} ${AuthService().displayName?.split(' ').first ?? ''}',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const Text(
-                          'LogisticsERP',
-                          style: TextStyle(fontSize: 13, color: secondaryText),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Offline queue badge
-                  ValueListenableBuilder<int>(
-                    valueListenable: OfflineQueueService().pendingCount,
-                    builder: (context, count, _) {
-                      if (count == 0) return const SizedBox.shrink();
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade800,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.cloud_upload,
-                                size: 16, color: Colors.white),
-                            const SizedBox(width: 4),
-                            Text('$count',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
+            child: AppScreenHeader(
+              title:
+                  '${tr('HOME_GREETING')} ${AuthService().displayName?.split(' ').first ?? ''}',
+              subtitle: 'LogisticsERP',
+              leading: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child:
+                    const Icon(Icons.warehouse, color: Colors.white, size: 24),
               ),
+              actions: [_buildOfflineBadge()],
             ),
           ),
-
-          // Tile grid
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             sliver: SliverGrid.count(
@@ -178,9 +143,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: _openPlateScanner,
                 ),
                 _DashboardTile(
-                  icon: Icons.inventory_2,
-                  label: tr('TILE_STOCK_LEVELS'),
-                  onTap: () => setState(() => _currentIndex = 1),
+                  icon: Icons.pin_drop,
+                  label: tr('TILE_CHECK_LOCATION'),
+                  onTap: _openLocationLookup,
+                ),
+                _DashboardTile(
+                  icon: Icons.warning_amber,
+                  label: tr('TILE_LOW_STOCK'),
+                  onTap: _openLowStock,
                 ),
               ],
             ),
@@ -190,11 +160,41 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildOfflineBadge() {
+    return ValueListenableBuilder<int>(
+      valueListenable: OfflineQueueService().pendingCount,
+      builder: (context, count, _) {
+        if (count == 0) return const SizedBox.shrink();
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.warning,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_upload, size: 16, color: Colors.white),
+              const SizedBox(width: 4),
+              Text(
+                '$count',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildBottomNav() {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF1C1E26),
-        border: Border(top: BorderSide(color: Color(0xFF23262E), width: 0.5)),
+        color: AppColors.darkBg,
+        border: Border(top: BorderSide(color: AppColors.inputBg, width: 0.5)),
       ),
       child: SafeArea(
         child: SizedBox(
@@ -212,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.inventory_2,
                 label: tr('NAV_STOCK'),
                 isActive: _currentIndex == 1,
-                onTap: () => setState(() => _currentIndex = 1),
+                onTap: () => _openStock(),
               ),
               // Center scanner button
               GestureDetector(
@@ -271,7 +271,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? const Color(0xFF3498DB) : const Color(0xFFA0A5B1);
+    final color = isActive ? AppColors.accent : AppColors.secondaryText;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -305,13 +305,10 @@ class _DashboardTile extends StatelessWidget {
     required this.onTap,
   });
 
-  static const Color cardBg = Color(0xFF2C2F3A);
-  static const Color accent = Color(0xFF3498DB);
-
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: cardBg,
+      color: AppColors.cardBg,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -321,10 +318,12 @@ class _DashboardTile extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: accent, size: 42),
+              Icon(icon, color: AppColors.accent, size: 42),
               const SizedBox(height: 12),
               Text(
                 label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white,

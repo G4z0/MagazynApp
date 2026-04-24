@@ -6,6 +6,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/local_history_service.dart';
 import '../services/offline_queue_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 
 /// Ekran ręcznego dodawania produktu bez skanowania kodu.
 /// Automatycznie generuje wewnętrzny kod SAS-N.
@@ -40,10 +42,10 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
     (value: 'kpl', key: 'UNIT_SETS', icon: Icons.widgets),
   ];
 
-  static const Color _accent = Color(0xFF3498DB);
-  static const Color _darkBg = Color(0xFF1C1E26);
-  static const Color _cardBg = Color(0xFF2C2F3A);
-  static const Color _inputBg = Color(0xFF23262E);
+  static const Color _accent = AppColors.accent;
+  static const Color _darkBg = AppColors.darkBg;
+  static const Color _cardBg = AppColors.cardBg;
+  static const Color _inputBg = AppColors.inputBg;
 
   @override
   void initState() {
@@ -91,7 +93,8 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
         : null;
 
     // Minimalny stan (opcjonalny)
-    final minQuantityText = _minQuantityController.text.trim().replaceAll(',', '.');
+    final minQuantityText =
+        _minQuantityController.text.trim().replaceAll(',', '.');
     final double? minQuantity =
         minQuantityText.isEmpty ? null : double.tryParse(minQuantityText);
 
@@ -301,11 +304,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Karta z wygenerowanym kodem
-              Container(
-                decoration: BoxDecoration(
-                  color: _cardBg,
-                  borderRadius: BorderRadius.circular(16),
-                ),
+              AppCard(
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
@@ -420,7 +419,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                   Expanded(
                     flex: 3,
                     child: DropdownButtonFormField<String>(
-                        initialValue: _selectedUnit,
+                      initialValue: _selectedUnit,
                       isExpanded: true,
                       dropdownColor: _cardBg,
                       style: const TextStyle(color: Colors.white),
@@ -440,9 +439,9 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                               ))
                           .toList(),
                       onChanged: (value) {
-                          if (value != null) {
+                        if (value != null) {
                           setState(() => _selectedUnit = value);
-                          }
+                        }
                       },
                     ),
                   ),
@@ -454,7 +453,8 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
               // Minimalny stan (opcjonalnie)
               TextFormField(
                 controller: _minQuantityController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 style: const TextStyle(color: Colors.white),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
@@ -595,29 +595,13 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
               const SizedBox(height: 20),
 
               // Przycisk zapisz
-              FilledButton.icon(
-                onPressed: (_isSaving || _isLoadingCode) ? null : _save,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.add_circle, color: Colors.white),
-                label: Text(
-                  _isSaving ? tr('BUTTON_SAVING') : tr('BUTTON_RECEIVE_GOODS'),
-                  style: const TextStyle(
-                      fontSize: 18,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold),
-                ),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: _accent,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
+              AppPrimaryButton(
+                onPressed: (_isLoadingCode) ? null : _save,
+                isLoading: _isSaving,
+                icon: Icons.add_circle,
+                label: _isSaving
+                    ? tr('BUTTON_SAVING')
+                    : tr('BUTTON_RECEIVE_GOODS'),
               ),
             ],
           ),

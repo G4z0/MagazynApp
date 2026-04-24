@@ -5,6 +5,9 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/local_history_service.dart';
 import '../services/offline_queue_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
+import '../widgets/driver_search_dialog.dart';
 import 'scanner_screen.dart';
 
 /// Model pozycji wydania w trybie wsadowym.
@@ -55,10 +58,10 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
   String? _selectedDriverName;
   bool _isLoadingDrivers = false;
 
-  static const Color _accent = Color(0xFF3498DB);
-  static const Color _darkBg = Color(0xFF1C1E26);
-  static const Color _cardBg = Color(0xFF2C2F3A);
-  static const Color _inputBg = Color(0xFF23262E);
+  static const Color _accent = AppColors.accent;
+  static const Color _darkBg = AppColors.darkBg;
+  static const Color _cardBg = AppColors.cardBg;
+  static const Color _inputBg = AppColors.inputBg;
 
   @override
   void initState() {
@@ -306,7 +309,8 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
           }
 
           final canonicalIndex = _items.indexWhere(
-            (existing) => !identical(existing, item) &&
+            (existing) =>
+                !identical(existing, item) &&
                 existing.barcode == item.barcode &&
                 !existing.isIssued,
           );
@@ -554,7 +558,7 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
   void _showDriverSearchDialog() {
     showDialog(
       context: context,
-      builder: (ctx) => _DriverSearchDialog(
+      builder: (ctx) => DriverSearchDialog(
         drivers: _drivers,
         onSelected: (id, name) {
           setState(() {
@@ -1028,32 +1032,7 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                       ),
                       if (item.location != null && !item.isIssued) ...[
                         const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _accent.withAlpha(40),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: _accent.withAlpha(120)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.pin_drop,
-                                  color: _accent, size: 11),
-                              const SizedBox(width: 2),
-                              Text(
-                                item.location!,
-                                style: const TextStyle(
-                                  color: _accent,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'monospace',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        LocationChip(label: item.location!),
                       ],
                       if (!item.isIssued && !_isSubmitting)
                         IconButton(
@@ -1200,133 +1179,6 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
   }
 }
 
-/// Dialog z wyszukiwarką kierowców (kopia z ProductFormScreen).
-class _DriverSearchDialog extends StatefulWidget {
-  final List<Map<String, dynamic>> drivers;
-  final void Function(int id, String name) onSelected;
-
-  const _DriverSearchDialog({required this.drivers, required this.onSelected});
-
-  @override
-  State<_DriverSearchDialog> createState() => _DriverSearchDialogState();
-}
-
-class _DriverSearchDialogState extends State<_DriverSearchDialog> {
-  final _searchController = TextEditingController();
-  List<Map<String, dynamic>> _filtered = [];
-
-  static const Color _accent = Color(0xFF3498DB);
-  static const Color _cardBg = Color(0xFF2C2F3A);
-  static const Color _inputBg = Color(0xFF23262E);
-
-  @override
-  void initState() {
-    super.initState();
-    _filtered = widget.drivers;
-  }
-
-  void _filter(String query) {
-    final q = query.toLowerCase().trim();
-    setState(() {
-      if (q.isEmpty) {
-        _filtered = widget.drivers;
-      } else {
-        _filtered = widget.drivers
-            .where((d) => (d['name'] as String).toLowerCase().contains(q))
-            .toList();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: _cardBg,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: tr('HINT_SEARCH_DRIVER'),
-                  hintStyle: const TextStyle(color: Colors.white24),
-                  prefixIcon: const Icon(Icons.search, color: _accent),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.white38),
-                          onPressed: () {
-                            _searchController.clear();
-                            _filter('');
-                          },
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none),
-                  filled: true,
-                  fillColor: _inputBg,
-                ),
-                onChanged: _filter,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                '${_filtered.length} ${tr('LABEL_DRIVERS_COUNT')}',
-                style: const TextStyle(color: Colors.white38, fontSize: 12),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: _filtered.isEmpty
-                  ? Center(
-                      child: Text(tr('LABEL_NO_RESULTS'),
-                          style: const TextStyle(color: Colors.white38)),
-                    )
-                  : ListView.builder(
-                      itemCount: _filtered.length,
-                      itemBuilder: (ctx, i) {
-                        final driver = _filtered[i];
-                        final id = driver['id'] as int;
-                        final name = driver['name'] as String;
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: _accent.withAlpha(50),
-                            child: Text(
-                              name.isNotEmpty ? name[0].toUpperCase() : '?',
-                              style: const TextStyle(color: _accent),
-                            ),
-                          ),
-                          title: Text(name,
-                              style: const TextStyle(color: Colors.white)),
-                          onTap: () {
-                            widget.onSelected(id, name);
-                            Navigator.pop(ctx);
-                          },
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Bottom sheet z listą produktów do wyboru (z wyszukiwarką).
 class _ProductPickerSheet extends StatefulWidget {
   final void Function(String barcode, String productName, String unit,
@@ -1344,9 +1196,9 @@ class _ProductPickerSheetState extends State<_ProductPickerSheet> {
   List<Map<String, dynamic>> _filtered = [];
   bool _isLoading = true;
 
-  static const Color _accent = Color(0xFF3498DB);
-  static const Color _cardBg = Color(0xFF2C2F3A);
-  static const Color _inputBg = Color(0xFF23262E);
+  static const Color _accent = AppColors.accent;
+  static const Color _cardBg = AppColors.cardBg;
+  static const Color _inputBg = AppColors.inputBg;
 
   @override
   void initState() {
@@ -1523,33 +1375,7 @@ class _ProductPickerSheetState extends State<_ProductPickerSheet> {
                                   ),
                                   if (locationLabel != null) ...[
                                     const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: _accent.withAlpha(40),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                            color: _accent.withAlpha(120)),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(Icons.pin_drop,
-                                              color: _accent, size: 11),
-                                          const SizedBox(width: 2),
-                                          Text(
-                                            locationLabel,
-                                            style: const TextStyle(
-                                              color: _accent,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: 'monospace',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                                    LocationChip(label: locationLabel),
                                   ],
                                 ],
                               ),

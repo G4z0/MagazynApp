@@ -3,6 +3,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../l10n/translations.dart';
 import '../models/issue_target_preset.dart';
 import '../services/offline_queue_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 import 'ocr_capture_screen.dart';
 import 'product_form_screen.dart';
 
@@ -30,9 +32,9 @@ class ScannerScreen extends StatefulWidget {
 }
 
 class _ScannerScreenState extends State<ScannerScreen> {
-  static const Color _cardBg = Color(0xFF2C2F3A);
-  static const Color _inputBg = Color(0xFF23262E);
-  static const Color _accent = Color(0xFF3498DB);
+  static const Color _cardBg = AppColors.cardBg;
+  static const Color _inputBg = AppColors.inputBg;
+  static const Color _accent = AppColors.accent;
   MobileScannerController? _controller;
 
   // Wykryty kod — czeka na potwierdzenie użytkownika
@@ -230,7 +232,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   left: 16,
                   right: 16,
                   child: Card(
-                    color: Colors.white,
+                    color: _cardBg,
                     elevation: 8,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -242,8 +244,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.qr_code_scanner,
-                                  color: Colors.green.shade700, size: 28),
+                              const Icon(Icons.qr_code_scanner,
+                                  color: AppColors.success, size: 28),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
@@ -251,7 +253,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                                   children: [
                                     Text(tr('SCANNER_CODE_DETECTED'),
                                         style: const TextStyle(
-                                            fontSize: 13, color: Colors.grey)),
+                                            fontSize: 13,
+                                            color: AppColors.secondaryText)),
                                     const SizedBox(height: 4),
                                     Text(
                                       _detectedCode!,
@@ -260,6 +263,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'monospace',
                                         letterSpacing: 1.2,
+                                        color: Colors.white,
                                       ),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
@@ -276,7 +280,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
                                 alignment: Alignment.centerLeft,
                                 child: Chip(
                                   label: Text(_detectedFormat!,
-                                      style: const TextStyle(fontSize: 11)),
+                                      style: const TextStyle(
+                                          fontSize: 11, color: Colors.white)),
+                                  backgroundColor: _inputBg,
                                   visualDensity: VisualDensity.compact,
                                   padding: EdgeInsets.zero,
                                 ),
@@ -393,7 +399,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                         onPressed: _openOcrScreen,
                         icon: const Icon(Icons.document_scanner, size: 20),
                         label: const Text('OCR'),
-                        backgroundColor: Colors.blue.shade700,
+                        backgroundColor: _accent,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -473,7 +479,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                       builder: (_) => ProductFormScreen(
                         barcode: code,
                         initialMovementType: widget.initialMovementType,
-                        initialIssueTargetPreset: widget.initialIssueTargetPreset,
+                        initialIssueTargetPreset:
+                            widget.initialIssueTargetPreset,
                       ),
                     ),
                   );
@@ -564,16 +571,7 @@ class _QueueListSheetState extends State<_QueueListSheet> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Uchwyt
-        Container(
-          margin: const EdgeInsets.only(top: 12, bottom: 8),
-          width: 40,
-          height: 4,
-          decoration: BoxDecoration(
-            color: Colors.white24,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
+        const AppModalHandle(),
         // Nagłówek
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -630,8 +628,8 @@ class _QueueListSheetState extends State<_QueueListSheet> {
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundColor: _accent.withAlpha(40),
-                        child: const Icon(Icons.qr_code,
-                            size: 20, color: _accent),
+                        child:
+                            const Icon(Icons.qr_code, size: 20, color: _accent),
                       ),
                       title: Text(item['product_name'] as String,
                           style: const TextStyle(color: Colors.white)),

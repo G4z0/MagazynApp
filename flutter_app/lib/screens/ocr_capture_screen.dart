@@ -4,6 +4,8 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import '../l10n/translations.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 import 'product_form_screen.dart';
 
 /// Ekran OCR — podgląd kamery w aplikacji + przycisk migawki.
@@ -49,10 +51,13 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
       );
 
       await _camera!.initialize();
-      if (mounted) setState(() => _isInitialized = true);
+      if (mounted) {
+        setState(() => _isInitialized = true);
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => _initError = tr('ERROR_CAMERA', args: {'error': '$e'}));
+      }
     }
   }
 
@@ -191,18 +196,19 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppColors.cardBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) => _OcrResultsSheet(
         lines: lines,
         onSelect: (code) async {
+          final sheetNavigator = Navigator.of(ctx);
+          final rootNavigator = Navigator.of(context);
           await _releaseCamera();
-          if (!ctx.mounted) return;
-          Navigator.pop(ctx);
-          if (!context.mounted) return;
-          Navigator.pushReplacement(
-            context,
+          if (!mounted) return;
+          sheetNavigator.pop();
+          rootNavigator.pushReplacement(
             MaterialPageRoute(
               builder: (_) => ProductFormScreen(barcode: code),
             ),
@@ -372,7 +378,7 @@ class _OcrCaptureScreenState extends State<OcrCaptureScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 4),
-                      color: _isProcessing ? Colors.grey : Colors.white24,
+                      color: _isProcessing ? Colors.grey : AppColors.accent,
                     ),
                     child: _isProcessing
                         ? const Center(
@@ -481,25 +487,21 @@ class _OcrResultsSheetState extends State<_OcrResultsSheet> {
       expand: false,
       builder: (ctx, scrollController) => Column(
         children: [
-          Container(
-            margin: const EdgeInsets.only(top: 12, bottom: 8),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
+          const AppModalHandle(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                Icon(Icons.text_fields, color: Colors.blue.shade700),
+                const Icon(Icons.text_fields, color: AppColors.accent),
                 const SizedBox(width: 8),
                 Text(
                   tr('OCR_RESULTS_TITLE',
                       args: {'count': '${_controllers.length}'}),
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -508,15 +510,17 @@ class _OcrResultsSheetState extends State<_OcrResultsSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
               tr('OCR_EDIT_INSTRUCTION'),
-              style: const TextStyle(color: Colors.grey, fontSize: 13),
+              style:
+                  const TextStyle(color: AppColors.secondaryText, fontSize: 13),
             ),
           ),
-          const Divider(height: 16),
+          Divider(height: 16, color: Colors.white.withAlpha(20)),
           Expanded(
             child: ListView.separated(
               controller: scrollController,
               itemCount: _controllers.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, __) =>
+                  Divider(height: 1, color: Colors.white.withAlpha(20)),
               itemBuilder: (context, index) {
                 return Padding(
                   padding:
@@ -526,11 +530,14 @@ class _OcrResultsSheetState extends State<_OcrResultsSheet> {
                       // Numer
                       CircleAvatar(
                         radius: 16,
-                        backgroundColor: Colors.blue.shade50,
+                        backgroundColor: AppColors.accent.withAlpha(35),
                         child: Text(
                           '${index + 1}',
-                          style: TextStyle(
-                              color: Colors.blue.shade700, fontSize: 13),
+                          style: const TextStyle(
+                            color: AppColors.accent,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -539,25 +546,22 @@ class _OcrResultsSheetState extends State<_OcrResultsSheet> {
                         child: TextField(
                           controller: _controllers[index],
                           style: const TextStyle(
+                            color: Colors.white,
                             fontFamily: 'monospace',
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 10),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                          decoration: appInputDecoration(
+                            label: tr('OCR_USE_CODE'),
+                            dense: true,
                           ),
                         ),
                       ),
                       const SizedBox(width: 4),
                       // Przycisk wyboru
                       IconButton(
-                        icon: Icon(Icons.check_circle,
-                            color: Colors.green.shade700, size: 28),
+                        icon: const Icon(Icons.check_circle,
+                            color: AppColors.success, size: 28),
                         tooltip: tr('OCR_USE_CODE'),
                         onPressed: () {
                           final code = _controllers[index].text.trim();

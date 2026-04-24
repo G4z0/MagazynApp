@@ -5,32 +5,52 @@ import '../l10n/translations.dart';
 import '../services/api_service.dart';
 import '../services/offline_queue_service.dart';
 import '../models/code_type.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 import 'product_edit_screen.dart';
 import 'product_form_screen.dart';
 
 /// Ekran stanów magazynowych — lista produktów z aktualnym stanem.
 class StockScreen extends StatefulWidget {
-  const StockScreen({super.key});
+  final bool showLowStockOnly;
+  final VoidCallback? onShowAllStock;
+
+  const StockScreen({
+    super.key,
+    this.showLowStockOnly = false,
+    this.onShowAllStock,
+  });
 
   @override
   State<StockScreen> createState() => _StockScreenState();
 }
 
 class _StockScreenState extends State<StockScreen> {
-  static const Color accent = Color(0xFF3498DB);
-  static const Color cardBg = Color(0xFF2C2F3A);
-  static const Color secondaryText = Color(0xFFA0A5B1);
+  static const Color accent = AppColors.accent;
+  static const Color cardBg = AppColors.cardBg;
+  static const Color secondaryText = AppColors.secondaryText;
 
   List<Map<String, dynamic>> _products = [];
   bool _isLoading = true;
   String? _error;
+  late bool _showLowStockOnly;
   final _searchController = TextEditingController();
   Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
+    _showLowStockOnly = widget.showLowStockOnly;
     _loadProducts();
+  }
+
+  @override
+  void didUpdateWidget(covariant StockScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.showLowStockOnly != widget.showLowStockOnly) {
+      _showLowStockOnly = widget.showLowStockOnly;
+      _loadProducts(search: _searchController.text.trim());
+    }
   }
 
   @override
@@ -47,10 +67,17 @@ class _StockScreenState extends State<StockScreen> {
     });
 
     try {
-      final products = await ApiService.getStockList(search: search);
+      final products = _showLowStockOnly
+          ? await ApiService.getLowStockAlerts()
+          : await ApiService.getStockList(search: search);
+      final visibleProducts = _showLowStockOnly && search.isNotEmpty
+          ? products
+              .where((product) => _matchesSearch(product, search))
+              .toList()
+          : products;
       if (mounted) {
         setState(() {
-          _products = products;
+          _products = visibleProducts;
           _isLoading = false;
         });
       }
@@ -71,45 +98,62 @@ class _StockScreenState extends State<StockScreen> {
     });
   }
 
+  bool _matchesSearch(Map<String, dynamic> product, String search) {
+    final query = search.toLowerCase();
+    return [
+      product['product_name'],
+      product['barcode'],
+      product['unit'],
+    ].any((value) => value?.toString().toLowerCase().contains(query) ?? false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    tr('STOCK_TITLE'),
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: _showLocationLookupDialog,
-                  icon: const Icon(Icons.pin_drop, color: accent),
-                  tooltip: tr('TOOLTIP_CHECK_LOCATION'),
-                ),
+          AppScreenHeader(
+            title:
+                _showLowStockOnly ? tr('LOW_STOCK_TITLE') : tr('STOCK_TITLE'),
+            actions: [
+              if (_showLowStockOnly)
                 IconButton(
                   onPressed: _isLoading
                       ? null
-                      : () =>
-                          _loadProducts(search: _searchController.text.trim()),
+                      : () {
+                          final onShowAllStock = widget.onShowAllStock;
+                          if (onShowAllStock != null) {
+                            onShowAllStock();
+                            return;
+                          }
+                          setState(() => _showLowStockOnly = false);
+                          _loadProducts(search: _searchController.text.trim());
+                        },
                   icon: Icon(
-                    Icons.refresh,
+                    Icons.filter_alt_off,
                     color: _isLoading ? Colors.white24 : accent,
                   ),
-                  tooltip: tr('BUTTON_REFRESH'),
+                  tooltip: tr('STOCK_SHOW_ALL'),
                 ),
-              ],
-            ),
+              IconButton(
+                onPressed: _showLocationLookupDialog,
+                icon: const Icon(Icons.pin_drop, color: accent),
+                tooltip: tr('TOOLTIP_CHECK_LOCATION'),
+              ),
+              IconButton(
+                onPressed: _isLoading
+                    ? null
+                    : () => _loadProducts(
+                          search: _searchController.text.trim(),
+                        ),
+                icon: Icon(
+                  Icons.refresh,
+                  color: _isLoading ? Colors.white24 : accent,
+                ),
+                tooltip: tr('BUTTON_REFRESH'),
+              ),
+            ],
           ),
 
           // Search bar
@@ -118,16 +162,9 @@ class _StockScreenState extends State<StockScreen> {
             child: TextField(
               controller: _searchController,
               style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: tr('STOCK_SEARCH_HINT'),
-                hintStyle: const TextStyle(color: Colors.white38),
-                filled: true,
-                fillColor: cardBg,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                prefixIcon: const Icon(Icons.search, color: Colors.white38),
+              decoration: appInputDecoration(
+                label: tr('STOCK_SEARCH_HINT'),
+                icon: Icons.search,
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear, color: Colors.white38),
@@ -137,8 +174,6 @@ class _StockScreenState extends State<StockScreen> {
                         },
                       )
                     : null,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
               onChanged: _onSearchChanged,
             ),
@@ -187,22 +222,12 @@ class _StockScreenState extends State<StockScreen> {
     }
 
     if (_products.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.inventory_2, color: Colors.white24, size: 64),
-            const SizedBox(height: 12),
-            Text(
-              _searchController.text.isNotEmpty
-                  ? tr('STOCK_NO_RESULTS',
-                      args: {'query': _searchController.text})
-                  : tr('STOCK_EMPTY'),
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white38, fontSize: 14),
-            ),
-          ],
-        ),
+      return AppEmptyState(
+        icon:
+            _showLowStockOnly ? Icons.check_circle_outline : Icons.inventory_2,
+        title: _searchController.text.isNotEmpty
+            ? tr('STOCK_NO_RESULTS', args: {'query': _searchController.text})
+            : (_showLowStockOnly ? tr('LOW_STOCK_EMPTY') : tr('STOCK_EMPTY')),
       );
     }
 
@@ -251,32 +276,7 @@ class _StockScreenState extends State<StockScreen> {
               Positioned(
                 top: 6,
                 right: 6,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: accent.withAlpha(40),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: accent.withAlpha(120)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.pin_drop, color: accent, size: 12),
-                      const SizedBox(width: 3),
-                      Text(
-                        locationLabel,
-                        style: const TextStyle(
-                          color: accent,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'monospace',
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                child: LocationChip(label: locationLabel),
               ),
             Padding(
               padding: const EdgeInsets.all(14),
@@ -399,15 +399,15 @@ class _StockScreenState extends State<StockScreen> {
     final data = result['data'] as Map<String, dynamic>?;
     final canonicalBarcode = (data?['barcode'] as String?)?.trim();
     final effectiveBarcode =
-      (canonicalBarcode != null && canonicalBarcode.isNotEmpty)
-        ? canonicalBarcode
-        : barcode;
+        (canonicalBarcode != null && canonicalBarcode.isNotEmpty)
+            ? canonicalBarcode
+            : barcode;
     final movements = result['movements'] as List? ?? [];
     final stockList = result['stock'] as List? ?? [];
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1C1E26),
+      backgroundColor: AppColors.darkBg,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -421,17 +421,7 @@ class _StockScreenState extends State<StockScreen> {
           controller: scrollCtrl,
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
+            const AppModalHandle(),
             if (data != null) ...[
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,8 +443,8 @@ class _StockScreenState extends State<StockScreen> {
                       _openEditScreen(
                         barcode: effectiveBarcode,
                         productName: data['product_name'] ?? '',
-                        codeType: CodeType.fromApi(
-                            data['code_type'] as String?),
+                        codeType:
+                            CodeType.fromApi(data['code_type'] as String?),
                         locations: _extractLocations(data),
                         stockByUnit: stockList,
                       );
@@ -496,33 +486,17 @@ class _StockScreenState extends State<StockScreen> {
                           Wrap(
                             spacing: 6,
                             runSpacing: 6,
-                            children: _extractLocations(data)
-                                .map(
-                                  (location) => Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: accent.withAlpha(30),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                          color: accent.withAlpha(90)),
-                                    ),
-                                    child: Text(
-                                      _formatLocation(
-                                            location['rack'],
-                                            location['shelf'],
-                                          ) ??
-                                          '',
-                                      style: const TextStyle(
-                                        color: accent,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        fontFamily: 'monospace',
-                                      ),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
+                            children: _extractLocations(data).map((location) {
+                              final label = _formatLocation(
+                                    location['rack'],
+                                    location['shelf'],
+                                  ) ??
+                                  '';
+                              return LocationChip(
+                                label: label,
+                                fontSize: 13,
+                              );
+                            }).toList(),
                           ),
                         ],
                       ),
@@ -537,8 +511,7 @@ class _StockScreenState extends State<StockScreen> {
               ...stockList.map((s) {
                 final m = Map<String, dynamic>.from(s as Map);
                 final unit = m['unit'] as String? ?? 'szt';
-                final cur =
-                    double.tryParse(m['current_stock'].toString()) ?? 0;
+                final cur = double.tryParse(m['current_stock'].toString()) ?? 0;
                 final minRaw = m['min_quantity'];
                 final double? minVal = (minRaw == null)
                     ? null
@@ -585,12 +558,10 @@ class _StockScreenState extends State<StockScreen> {
                               minVal,
                             );
                           },
-                          icon: const Icon(Icons.edit,
-                              size: 16, color: accent),
+                          icon: const Icon(Icons.edit, size: 16, color: accent),
                           label: Text(
                             hasMin ? tr('BUTTON_EDIT') : tr('BUTTON_SET'),
-                            style: const TextStyle(
-                                color: accent, fontSize: 13),
+                            style: const TextStyle(color: accent, fontSize: 13),
                           ),
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
@@ -780,7 +751,8 @@ class _StockScreenState extends State<StockScreen> {
       }
     }
 
-    final legacy = _formatLocation(source['location_rack'], source['location_shelf']);
+    final legacy =
+        _formatLocation(source['location_rack'], source['location_shelf']);
     if (legacy == null) return const [];
 
     return [
@@ -860,8 +832,7 @@ class _StockScreenState extends State<StockScreen> {
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide.none,
                 ),
-                prefixIcon:
-                    const Icon(Icons.warning_amber, color: accent),
+                prefixIcon: const Icon(Icons.warning_amber, color: accent),
               ),
             ),
           ],

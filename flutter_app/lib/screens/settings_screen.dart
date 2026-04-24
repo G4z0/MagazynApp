@@ -5,15 +5,17 @@ import '../main.dart';
 import '../services/auth_service.dart';
 import '../services/local_history_service.dart';
 import '../services/offline_queue_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 import 'login_screen.dart';
 
 /// Ekran ustawień / "Więcej"
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  static const Color cardBg = Color(0xFF2C2F3A);
-  static const Color accent = Color(0xFF3498DB);
-  static const Color _secondaryText = Color(0xFFA0A5B1);
+  static const Color cardBg = AppColors.cardBg;
+  static const Color accent = AppColors.accent;
+  static const Color _secondaryText = AppColors.secondaryText;
   static const String _serverHost = '192.168.1.42';
   static const String _appVersion = '1.3.0+5';
 
@@ -176,17 +178,7 @@ class SettingsScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
+            const AppModalHandle(),
             Row(
               children: [
                 const Icon(Icons.cloud_upload, color: accent, size: 24),
@@ -252,7 +244,7 @@ class SettingsScreen extends StatelessWidget {
                   itemBuilder: (_, i) {
                     final item = items[i];
                     final actionType =
-                      item['action_type'] as String? ?? 'save_product';
+                        item['action_type'] as String? ?? 'save_product';
                     late final String type;
                     late final IconData icon;
                     late final Color color;
@@ -265,8 +257,8 @@ class SettingsScreen extends StatelessWidget {
                       final rack = item['location_rack'] as String?;
                       final shelf = item['location_shelf'];
                       final suffix = (rack != null && shelf != null)
-                        ? '$rack$shelf'
-                        : tr('LOCATION_CLEAR');
+                          ? '$rack$shelf'
+                          : tr('LOCATION_CLEAR');
                       subtitle = '$suffix — ${item['barcode']}';
                     } else if (actionType == 'set_min_quantity') {
                       type = tr('LABEL_MIN_STOCK');
@@ -275,21 +267,21 @@ class SettingsScreen extends StatelessWidget {
                       final minQuantity = item['min_quantity'];
                       final unit = item['unit'] ?? 'szt';
                       final valueText = minQuantity == null
-                        ? tr('MIN_STOCK_NOT_SET')
-                        : '$minQuantity $unit';
+                          ? tr('MIN_STOCK_NOT_SET')
+                          : '$minQuantity $unit';
                       subtitle = '$valueText — ${item['barcode']}';
                     } else {
                       type = item['movement_type'] == 'in'
-                        ? tr('LOG_STOCK_IN')
-                        : tr('LOG_STOCK_OUT');
+                          ? tr('LOG_STOCK_IN')
+                          : tr('LOG_STOCK_OUT');
                       icon = item['movement_type'] == 'in'
-                        ? Icons.add_circle
-                        : Icons.remove_circle;
+                          ? Icons.add_circle
+                          : Icons.remove_circle;
                       color = item['movement_type'] == 'in'
-                        ? Colors.green
-                        : Colors.orange;
+                          ? Colors.green
+                          : Colors.orange;
                       subtitle =
-                        '${item['quantity']} ${item['unit']} — ${item['barcode']}';
+                          '${item['quantity']} ${item['unit']} — ${item['barcode']}';
                     }
 
                     return Container(
@@ -368,14 +360,7 @@ class SettingsScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2)),
-            ),
+            const AppModalHandle(),
             Row(
               children: [
                 const Icon(Icons.translate, color: accent, size: 24),
@@ -487,24 +472,13 @@ class SettingsScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 16),
-            child: Text(
-              tr('SETTINGS_TITLE'),
-              style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
-            ),
+          AppScreenHeader(
+            title: tr('SETTINGS_TITLE'),
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
           ),
-          // Karta użytkownika
-          Container(
+          AppCard(
             margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(14),
-            ),
             child: Row(
               children: [
                 CircleAvatar(

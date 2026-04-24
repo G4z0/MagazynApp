@@ -268,18 +268,20 @@ class OfflineQueueService {
 
           if (actionType == 'set_location') {
             final locationsJson = item['locations_json'] as String?;
-            final locations = (locationsJson != null && locationsJson.isNotEmpty)
-                ? List<Map<String, dynamic>>.from(
-                    jsonDecode(locationsJson) as List,
-                  )
-                : ((item['location_rack'] != null && item['location_shelf'] != null)
-                    ? <Map<String, dynamic>>[
-                        {
-                          'rack': item['location_rack'] as String,
-                          'shelf': item['location_shelf'] as int,
-                        }
-                      ]
-                    : <Map<String, dynamic>>[]);
+            final locations =
+                (locationsJson != null && locationsJson.isNotEmpty)
+                    ? List<Map<String, dynamic>>.from(
+                        jsonDecode(locationsJson) as List,
+                      )
+                    : ((item['location_rack'] != null &&
+                            item['location_shelf'] != null)
+                        ? <Map<String, dynamic>>[
+                            {
+                              'rack': item['location_rack'] as String,
+                              'shelf': item['location_shelf'] as int,
+                            }
+                          ]
+                        : <Map<String, dynamic>>[]);
 
             await ApiService.setProductLocations(
               barcode: item['barcode'] as String,

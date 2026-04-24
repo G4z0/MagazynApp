@@ -16,7 +16,9 @@ class IssueTargetPreset {
       return vehiclePlate != null && vehiclePlate!.trim().isNotEmpty;
     }
     if (issueTarget == 'driver') {
-      return driverId != null && driverName != null && driverName!.trim().isNotEmpty;
+      return driverId != null &&
+          driverName != null &&
+          driverName!.trim().isNotEmpty;
     }
     return false;
   }
@@ -39,9 +41,11 @@ class IssueTargetPreset {
 
     final preset = IssueTargetPreset(
       issueTarget: issueTarget,
-      vehiclePlate: vehiclePlate != null && vehiclePlate.isNotEmpty ? vehiclePlate : null,
+      vehiclePlate:
+          vehiclePlate != null && vehiclePlate.isNotEmpty ? vehiclePlate : null,
       driverId: driverId,
-      driverName: driverName != null && driverName.isNotEmpty ? driverName : null,
+      driverName:
+          driverName != null && driverName.isNotEmpty ? driverName : null,
     );
 
     return preset.hasReusableTarget ? preset : null;

@@ -114,7 +114,8 @@ class ApiService {
   /// Zwraca mapę z kluczami: data, stock (lista po jednostkach), movements (historia).
   static Future<Map<String, dynamic>?> checkBarcode(String barcode) async {
     try {
-      final uri = Uri.parse('$_endpoint?barcode=${Uri.encodeComponent(barcode)}');
+      final uri =
+          Uri.parse('$_endpoint?barcode=${Uri.encodeComponent(barcode)}');
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {

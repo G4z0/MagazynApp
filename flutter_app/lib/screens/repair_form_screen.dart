@@ -5,6 +5,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/local_history_service.dart';
 import '../services/workshop_api_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 
 /// Formularz dodania naprawy po zeskanowaniu tablicy rejestracyjnej.
 class RepairFormScreen extends StatefulWidget {
@@ -18,11 +20,11 @@ class RepairFormScreen extends StatefulWidget {
 }
 
 class _RepairFormScreenState extends State<RepairFormScreen> {
-  static const Color _accent = Color(0xFF3498DB);
-  static const Color _darkBg = Color(0xFF1C1E26);
-  static const Color _cardBg = Color(0xFF2C2F3A);
-  static const Color _inputBg = Color(0xFF23262E);
-  static const Color _secondaryText = Color(0xFFA0A5B1);
+  static const Color _accent = AppColors.accent;
+  static const Color _darkBg = AppColors.darkBg;
+  static const Color _cardBg = AppColors.cardBg;
+  static const Color _inputBg = AppColors.inputBg;
+  static const Color _secondaryText = AppColors.secondaryText;
 
   final _formKey = GlobalKey<FormState>();
   final _noteController = TextEditingController();
@@ -75,14 +77,14 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
 
   Future<void> _loadData() async {
     final objectType = widget.vehicle['object_type'] as int;
-    final results = await Future.wait([
+    final results = await Future.wait<List<Map<String, dynamic>>>([
       WorkshopApiService.getEmployees(),
       WorkshopApiService.getServiceGroups(objectType),
     ]);
     if (mounted) {
       setState(() {
-        _employees = results[0] as List<Map<String, dynamic>>;
-        _serviceGroups = results[1] as List<Map<String, dynamic>>;
+        _employees = results[0];
+        _serviceGroups = results[1];
         _isLoading = false;
       });
     }
@@ -350,7 +352,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: DropdownButtonFormField<int>(
-                      value: _selectedEmployeeId,
+                      initialValue: _selectedEmployeeId,
                       isExpanded: true,
                       dropdownColor: _cardBg,
                       style: const TextStyle(color: Colors.white, fontSize: 15),
@@ -467,34 +469,13 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
                   const SizedBox(height: 24),
 
                   // Przycisk zapisu
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: FilledButton.icon(
-                      onPressed: _isSaving ? null : _save,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _accent,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: _accent.withAlpha(80),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
-                      ),
-                      icon: _isSaving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Icon(Icons.build, color: Colors.white),
-                      label: Text(
-                        _isSaving
-                            ? tr('BUTTON_SAVING')
-                            : tr('BUTTON_ADD_REPAIR'),
-                        style: const TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.bold),
-                      ),
-                    ),
+                  AppPrimaryButton(
+                    onPressed: _save,
+                    isLoading: _isSaving,
+                    icon: Icons.build,
+                    label: _isSaving
+                        ? tr('BUTTON_SAVING')
+                        : tr('BUTTON_ADD_REPAIR'),
                   ),
                 ],
               ),
@@ -503,14 +484,7 @@ class _RepairFormScreenState extends State<RepairFormScreen> {
   }
 
   Widget _sectionLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 6),
-      child: Text(text,
-          style: const TextStyle(
-              color: _secondaryText,
-              fontSize: 13,
-              fontWeight: FontWeight.w500)),
-    );
+    return AppSectionTitle(text);
   }
 
   Widget _buildTextField({
@@ -943,8 +917,7 @@ class _SelectedPart {
     required this.name,
     required this.unit,
     required this.maxStock,
-    this.quantity = 1,
-  });
+  }) : quantity = 1;
 }
 
 /// Bottom sheet z wyszukiwaniem dostępnych części.
@@ -1009,18 +982,7 @@ class _PartsSearchSheetState extends State<_PartsSearchSheet> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Handle
-        Center(
-          child: Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(top: 8, bottom: 12),
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ),
+        const AppModalHandle(),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
@@ -1109,7 +1071,7 @@ class _PartsSearchSheetState extends State<_PartsSearchSheet> {
                             trailing: alreadyAdded
                                 ? const Icon(Icons.check,
                                     color: Colors.green, size: 20)
-                                : Icon(Icons.add_circle_outline,
+                                : const Icon(Icons.add_circle_outline,
                                     color: _accent, size: 22),
                             onTap: alreadyAdded
                                 ? null

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import '../l10n/translations.dart';
 import '../services/workshop_api_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 import 'repair_form_screen.dart';
 
 /// Ekran skanowania tablic rejestracyjnych za pomocą OCR.
@@ -17,9 +19,9 @@ class PlateScannerScreen extends StatefulWidget {
 }
 
 class _PlateScannerScreenState extends State<PlateScannerScreen> {
-  static const Color _accent = Color(0xFF3498DB);
-  static const Color _cardBg = Color(0xFF2C2F3A);
-  static const Color _secondaryText = Color(0xFFA0A5B1);
+  static const Color _accent = AppColors.accent;
+  static const Color _cardBg = AppColors.cardBg;
+  static const Color _secondaryText = AppColors.secondaryText;
 
   CameraController? _camera;
   bool _isInitialized = false;
@@ -48,10 +50,13 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
       _camera =
           CameraController(back, ResolutionPreset.high, enableAudio: false);
       await _camera!.initialize();
-      if (mounted) setState(() => _isInitialized = true);
+      if (mounted) {
+        setState(() => _isInitialized = true);
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => _initError = tr('ERROR_CAMERA', args: {'error': '$e'}));
+      }
     }
   }
 
@@ -115,8 +120,9 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
   }
 
   Future<void> _captureAndRecognize() async {
-    if (_isProcessing || _camera == null || !_camera!.value.isInitialized)
+    if (_isProcessing || _camera == null || !_camera!.value.isInitialized) {
       return;
+    }
     setState(() => _isProcessing = true);
 
     try {
@@ -198,14 +204,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2)),
-            ),
+            const AppModalHandle(),
             Text(tr('PLATE_RESULTS_TITLE'),
                 style: const TextStyle(
                     color: Colors.white,
@@ -334,14 +333,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2)),
-            ),
+            const AppModalHandle(),
             Text(tr('PLATE_VEHICLES_FOUND'),
                 style: const TextStyle(
                     color: Colors.white,
@@ -434,7 +426,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen> {
             hintText: tr('DIALOG_ENTER_PLATE_HINT'),
             hintStyle: const TextStyle(color: _secondaryText),
             filled: true,
-            fillColor: const Color(0xFF23262E),
+            fillColor: AppColors.inputBg,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -663,7 +655,7 @@ class _PlateOverlayPainter extends CustomPainter {
         rrect,
         Paint()
           ..style = PaintingStyle.stroke
-          ..color = const Color(0xFF3498DB)
+          ..color = AppColors.accent
           ..strokeWidth = 2.5);
 
     // Corners
