@@ -19,12 +19,14 @@ class ScannerScreen extends StatefulWidget {
   final bool returnBarcodeOnly;
   final String initialMovementType;
   final IssueTargetPreset? initialIssueTargetPreset;
+  final String? title;
 
   const ScannerScreen({
     super.key,
     this.returnBarcodeOnly = false,
     this.initialMovementType = 'in',
     this.initialIssueTargetPreset,
+    this.title,
   });
 
   @override
@@ -143,7 +145,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(tr('SCANNER_TITLE')),
+        title: Text(widget.title ?? tr('SCANNER_TITLE')),
         centerTitle: true,
         actions: [
           // Wskaźnik kolejki offline
