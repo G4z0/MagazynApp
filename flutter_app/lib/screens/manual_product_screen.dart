@@ -30,6 +30,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
   bool _isSaving = false;
   bool _isLoadingCode = true;
   String _generatedCode = '';
+  Map<String, dynamic>? _selectedExistingProduct;
   String _selectedUnit = 'szt';
   final String _movementType = 'in';
 
@@ -79,12 +80,75 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
     return v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
   }
 
+  bool get _hasSelectedExistingProduct => _selectedExistingProduct != null;
+
+  String get _activeCode {
+    final existingCode =
+        _selectedExistingProduct?['barcode']?.toString().trim();
+    if (existingCode != null && existingCode.isNotEmpty) {
+      return existingCode;
+    }
+    return _generatedCode;
+  }
+
+  CodeType get _activeCodeType {
+    final raw = _selectedExistingProduct?['code_type']?.toString();
+    if (raw != null && raw.isNotEmpty) {
+      return CodeType.fromApi(raw);
+    }
+    return CodeType.detect(_activeCode);
+  }
+
+  Future<void> _showExistingProductPicker() async {
+    final product = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _ExistingProductPickerSheet(),
+    );
+    if (product == null || !mounted) return;
+    _applyExistingProduct(product);
+  }
+
+  void _applyExistingProduct(Map<String, dynamic> product) {
+    final name = product['product_name']?.toString() ?? '';
+    final unit = product['unit']?.toString() ?? 'szt';
+    final minQuantity = product['min_quantity'];
+    final rack = product['location_rack']?.toString().trim();
+    final shelf = product['location_shelf'];
+    final normalizedUnit =
+        _units.any((availableUnit) => availableUnit.value == unit)
+            ? unit
+            : 'szt';
+
+    setState(() {
+      _selectedExistingProduct = product;
+      _nameController.text = name;
+      _selectedUnit = normalizedUnit;
+      _minQuantityController.text =
+          minQuantity == null ? '' : _formatQty(minQuantity);
+      _rackController.text = rack == null || rack.isEmpty ? '' : rack;
+      _shelfController.text = shelf == null ? '' : shelf.toString();
+    });
+  }
+
+  void _clearExistingProduct() {
+    setState(() {
+      _selectedExistingProduct = null;
+      _nameController.clear();
+      _selectedUnit = 'szt';
+      _minQuantityController.clear();
+      _rackController.clear();
+      _shelfController.clear();
+    });
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
 
-    final barcode = _generatedCode;
+    final barcode = _activeCode;
     final productName = _nameController.text.trim();
     final quantity = double.tryParse(_quantityController.text.trim()) ?? 1;
     final unit = _selectedUnit;
@@ -111,7 +175,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
         productName: productName,
         quantity: quantity,
         unit: unit,
-        codeType: CodeType.productCode,
+        codeType: _activeCodeType,
         movementType: _movementType,
         note: note,
         locationRack: locationRack,
@@ -142,7 +206,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
         productName: productName,
         quantity: quantity,
         unit: unit,
-        codeType: CodeType.productCode,
+        codeType: _activeCodeType,
         movementType: _movementType,
         note: note,
         locationRack: locationRack,
@@ -179,7 +243,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
         productName: productName,
         quantity: quantity,
         unit: unit,
-        codeType: CodeType.productCode,
+        codeType: _activeCodeType,
         movementType: _movementType,
         note: note,
         locationRack: locationRack,
@@ -303,22 +367,35 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Karta z wygenerowanym kodem
+              // Karta z kodem produktu: wygenerowanym lub wybranym z bazy.
               AppCard(
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    const Icon(Icons.tag, size: 48, color: _accent),
+                    Icon(
+                      _hasSelectedExistingProduct
+                          ? Icons.inventory_2
+                          : Icons.tag,
+                      size: 48,
+                      color: _accent,
+                    ),
                     const SizedBox(height: 8),
                     Chip(
-                      avatar: const Icon(Icons.auto_awesome,
-                          size: 16, color: Colors.white),
-                      label: Text(tr('MANUAL_AUTO_CODE'),
+                      avatar: Icon(
+                          _hasSelectedExistingProduct
+                              ? Icons.check_circle
+                              : Icons.auto_awesome,
+                          size: 16,
+                          color: Colors.white),
+                      label: Text(
+                          _hasSelectedExistingProduct
+                              ? tr('MANUAL_EXISTING_PRODUCT')
+                              : tr('MANUAL_AUTO_CODE'),
                           style: const TextStyle(color: Colors.white)),
                       backgroundColor: _accent.withAlpha(200),
                     ),
                     const SizedBox(height: 8),
-                    if (_isLoadingCode)
+                    if (_isLoadingCode && !_hasSelectedExistingProduct)
                       const SizedBox(
                         width: 24,
                         height: 24,
@@ -327,7 +404,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                       )
                     else
                       SelectableText(
-                        _generatedCode,
+                        _activeCode,
                         style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -338,10 +415,36 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                       ),
                     const SizedBox(height: 8),
                     Text(
-                      tr('MANUAL_CODE_INFO'),
+                      _hasSelectedExistingProduct
+                          ? tr('MANUAL_EXISTING_PRODUCT_INFO')
+                          : tr('MANUAL_CODE_INFO'),
                       style:
                           const TextStyle(fontSize: 12, color: Colors.white38),
                       textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _showExistingProductPicker,
+                          icon: const Icon(Icons.search),
+                          label: Text(tr('MANUAL_PICK_EXISTING')),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(color: _accent.withAlpha(160)),
+                          ),
+                        ),
+                        if (_hasSelectedExistingProduct)
+                          IconButton(
+                            onPressed: _clearExistingProduct,
+                            icon: const Icon(Icons.close),
+                            color: Colors.white70,
+                            tooltip: tr('MANUAL_CLEAR_EXISTING'),
+                          ),
+                      ],
                     ),
                   ],
                 ),
@@ -419,6 +522,7 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
                   Expanded(
                     flex: 3,
                     child: DropdownButtonFormField<String>(
+                      key: ValueKey(_selectedUnit),
                       initialValue: _selectedUnit,
                       isExpanded: true,
                       dropdownColor: _cardBg,
@@ -596,7 +700,9 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
 
               // Przycisk zapisz
               AppPrimaryButton(
-                onPressed: (_isLoadingCode) ? null : _save,
+                onPressed: (_isLoadingCode && !_hasSelectedExistingProduct)
+                    ? null
+                    : _save,
                 isLoading: _isSaving,
                 icon: Icons.add_circle,
                 label: _isSaving
@@ -605,6 +711,231 @@ class _ManualProductScreenState extends State<ManualProductScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExistingProductPickerSheet extends StatefulWidget {
+  const _ExistingProductPickerSheet();
+
+  @override
+  State<_ExistingProductPickerSheet> createState() =>
+      _ExistingProductPickerSheetState();
+}
+
+class _ExistingProductPickerSheetState
+    extends State<_ExistingProductPickerSheet> {
+  final _searchController = TextEditingController();
+  List<Map<String, dynamic>> _products = [];
+  List<Map<String, dynamic>> _filtered = [];
+  bool _isLoading = true;
+
+  static const Color _accent = AppColors.accent;
+  static const Color _cardBg = AppColors.cardBg;
+  static const Color _inputBg = AppColors.inputBg;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      final products = await ApiService.getStockList();
+      if (!mounted) return;
+      setState(() {
+        _products = products;
+        _filtered = products;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _filter(String query) {
+    final q = query.toLowerCase().trim();
+    setState(() {
+      if (q.isEmpty) {
+        _filtered = _products;
+        return;
+      }
+
+      _filtered = _products.where((product) {
+        final name = (product['product_name']?.toString() ?? '').toLowerCase();
+        final barcode = (product['barcode']?.toString() ?? '').toLowerCase();
+        return name.contains(q) || barcode.contains(q);
+      }).toList();
+    });
+  }
+
+  String _formatQty(dynamic qty) {
+    final v = double.tryParse(qty.toString()) ?? 0;
+    return v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
+  }
+
+  String? _formatLocation(Map<String, dynamic> product) {
+    final rack = product['location_rack']?.toString().trim();
+    final shelf = product['location_shelf'];
+    if (rack == null || rack.isEmpty || shelf == null) {
+      return null;
+    }
+    return '$rack$shelf';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.78,
+      minChildSize: 0.45,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (ctx, scrollController) => Container(
+        decoration: const BoxDecoration(
+          color: _cardBg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                tr('MANUAL_PICK_EXISTING_TITLE'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: tr('STOCK_SEARCH_HINT'),
+                  hintStyle: const TextStyle(color: Colors.white24),
+                  prefixIcon: const Icon(Icons.search, color: _accent),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.white38),
+                          onPressed: () {
+                            _searchController.clear();
+                            _filter('');
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: _inputBg,
+                ),
+                onChanged: _filter,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${_filtered.length} ${tr('PRODUCT_PLURAL_MANY')}',
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                ),
+              ),
+            ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: _accent),
+                    )
+                  : _filtered.isEmpty
+                      ? Center(
+                          child: Text(
+                            tr('LABEL_NO_RESULTS'),
+                            style: const TextStyle(color: Colors.white38),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: scrollController,
+                          itemCount: _filtered.length,
+                          itemBuilder: (ctx, i) {
+                            final product = _filtered[i];
+                            final barcode =
+                                product['barcode']?.toString() ?? '';
+                            final name = product['product_name']?.toString() ??
+                                tr('PRODUCT_NO_NAME');
+                            final unit = product['unit']?.toString() ?? 'szt';
+                            final stock = product['current_stock'];
+                            final location = _formatLocation(product);
+
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: _accent.withAlpha(40),
+                                child: const Icon(
+                                  Icons.inventory_2,
+                                  color: _accent,
+                                  size: 20,
+                                ),
+                              ),
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (location != null) ...[
+                                    const SizedBox(width: 6),
+                                    LocationChip(label: location),
+                                  ],
+                                ],
+                              ),
+                              subtitle: Text(
+                                '$barcode  •  ${_formatQty(stock)} $unit',
+                                style: const TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.add_circle_outline,
+                                color: Colors.green.shade400,
+                              ),
+                              onTap: () => Navigator.pop(ctx, product),
+                            );
+                          },
+                        ),
+            ),
+          ],
         ),
       ),
     );

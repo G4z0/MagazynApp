@@ -124,6 +124,12 @@ const Map<String, Map<String, String>> _translations = {
     'MANUAL_AUTO_CODE': 'Kod automatyczny',
     'MANUAL_CODE_INFO': 'Kod wewnętrzny wygenerowany automatycznie',
     'MANUAL_GENERATED_CODE': 'Kod produktu',
+    'MANUAL_EXISTING_PRODUCT': 'Istniejący produkt',
+    'MANUAL_EXISTING_PRODUCT_INFO':
+        'Dostawa zostanie dopisana do wybranego produktu',
+    'MANUAL_PICK_EXISTING': 'Wybierz z bazy',
+    'MANUAL_PICK_EXISTING_TITLE': 'Wybierz istniejący produkt',
+    'MANUAL_CLEAR_EXISTING': 'Wyczyść wybór',
 
     'LABEL_QUANTITY': 'Ilość',
     'VALIDATION_QUANTITY_REQUIRED': 'Podaj ilość',
@@ -480,6 +486,12 @@ const Map<String, Map<String, String>> _translations = {
     'MANUAL_AUTO_CODE': 'Auto code',
     'MANUAL_CODE_INFO': 'Internal code generated automatically',
     'MANUAL_GENERATED_CODE': 'Product code',
+    'MANUAL_EXISTING_PRODUCT': 'Existing product',
+    'MANUAL_EXISTING_PRODUCT_INFO':
+        'The receipt will be added to the selected product',
+    'MANUAL_PICK_EXISTING': 'Select from stock',
+    'MANUAL_PICK_EXISTING_TITLE': 'Select existing product',
+    'MANUAL_CLEAR_EXISTING': 'Clear selection',
 
     'LABEL_QUANTITY': 'Quantity',
     'VALIDATION_QUANTITY_REQUIRED': 'Enter quantity',
