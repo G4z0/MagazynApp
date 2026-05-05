@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../l10n/translations.dart';
+import '../models/code_type.dart';
 import '../models/issue_target_preset.dart';
+import '../services/api_service.dart';
 import '../services/offline_queue_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_ui.dart';
 import 'ocr_capture_screen.dart';
+import 'product_edit_screen.dart';
 import 'product_form_screen.dart';
 
 /// Główny ekran ze skanerem kodów kreskowych.
 ///
-/// Po zeskanowaniu kodu automatycznie przechodzi
-/// do formularza wpisywania nazwy produktu.
+/// Po zeskanowaniu kodu pozwala wybrać przyjęcie/dodanie produktu
+/// albo edycję istniejącego produktu.
 ///
 /// Jeśli [returnBarcodeOnly] = true, po potwierdzeniu kodu
 /// wraca z wynikiem (String) zamiast przechodzić do formularza.
@@ -97,6 +100,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
       return;
     }
 
+    _openProductForm(code);
+  }
+
+  void _openProductForm(String code) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -112,6 +119,59 @@ class _ScannerScreenState extends State<ScannerScreen> {
         _detectedFormat = null;
         _isNavigating = false;
       });
+    });
+  }
+
+  Future<void> _editScannedProduct() async {
+    if (_detectedCode == null || _isNavigating) return;
+    setState(() => _isNavigating = true);
+
+    final code = _detectedCode!;
+    final result = await ApiService.checkBarcode(code);
+    if (!mounted) return;
+
+    final data = result?['data'] as Map<String, dynamic>?;
+    if (data == null) {
+      setState(() => _isNavigating = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(tr('SCANNER_EDIT_NOT_FOUND')),
+          backgroundColor: Colors.orange.shade800,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final stockByUnit = List<Map<String, dynamic>>.from(
+      (result?['stock'] as List? ?? const [])
+          .map((e) => Map<String, dynamic>.from(e as Map)),
+    );
+    final locations = List<Map<String, dynamic>>.from(
+      (data['locations'] as List? ?? const [])
+          .map((e) => Map<String, dynamic>.from(e as Map)),
+    );
+    final barcode = (data['barcode'] as String?)?.trim();
+    final productName = data['product_name'] as String? ?? '';
+
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductEditScreen(
+          barcode: barcode != null && barcode.isNotEmpty ? barcode : code,
+          productName: productName,
+          codeType: CodeType.fromApi(data['code_type'] as String?),
+          locations: locations,
+          stockByUnit: stockByUnit,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _detectedCode = null;
+      _detectedFormat = null;
+      _isNavigating = false;
     });
   }
 
@@ -291,37 +351,97 @@ class _ScannerScreenState extends State<ScannerScreen> {
                               ),
                             ),
                           const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _rejectCode,
-                                  icon: const Icon(Icons.close),
-                                  label: Text(tr('BUTTON_REJECT')),
+                          if (widget.returnBarcodeOnly)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed:
+                                        _isNavigating ? null : _rejectCode,
+                                    icon: const Icon(Icons.close),
+                                    label: Text(tr('BUTTON_REJECT')),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 14),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 2,
+                                  child: FilledButton.icon(
+                                    onPressed:
+                                        _isNavigating ? null : _confirmCode,
+                                    icon: const Icon(Icons.check),
+                                    label: Text(tr('BUTTON_CONFIRM'),
+                                        style: const TextStyle(fontSize: 16)),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: Colors.green.shade700,
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 14),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed:
+                                            _isNavigating ? null : _rejectCode,
+                                        icon: const Icon(Icons.close),
+                                        label: Text(tr('BUTTON_REJECT')),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: Colors.red,
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 14),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      flex: 2,
+                                      child: FilledButton.icon(
+                                        onPressed:
+                                            _isNavigating ? null : _confirmCode,
+                                        icon: const Icon(Icons.add_box),
+                                        label: Text(
+                                            tr('SCANNER_ACTION_RECEIVE'),
+                                            style:
+                                                const TextStyle(fontSize: 15)),
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor:
+                                              Colors.green.shade700,
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 14),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                OutlinedButton.icon(
+                                  onPressed: _isNavigating
+                                      ? null
+                                      : _editScannedProduct,
+                                  icon: const Icon(Icons.edit),
+                                  label: Text(tr('SCANNER_ACTION_EDIT')),
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                    side: BorderSide(
+                                        color: _accent.withAlpha(160)),
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 14),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                flex: 2,
-                                child: FilledButton.icon(
-                                  onPressed: _confirmCode,
-                                  icon: const Icon(Icons.check),
-                                  label: Text(tr('BUTTON_CONFIRM'),
-                                      style: const TextStyle(fontSize: 16)),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: Colors.green.shade700,
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 14),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
                         ],
                       ),
                     ),

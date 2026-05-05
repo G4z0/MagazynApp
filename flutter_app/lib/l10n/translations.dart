@@ -84,6 +84,10 @@ const Map<String, Map<String, String>> _translations = {
     'SCANNER_SWITCH_CAMERA': 'Przełącz kamerę',
     'SCANNER_CODE_DETECTED': 'Wykryto kod',
     'SCANNER_INSTRUCTION': 'Skieruj kamerę na kod',
+    'SCANNER_ACTION_RECEIVE': 'Przyjmij / dodaj',
+    'SCANNER_ACTION_EDIT': 'Edytuj istniejący produkt',
+    'SCANNER_EDIT_NOT_FOUND':
+        'Nie znaleziono produktu o tym kodzie. Użyj przyjęcia, aby dodać go jako nowy.',
 
     // ── Stock ──
     'STOCK_TITLE': 'Stany magazynowe',
@@ -118,6 +122,9 @@ const Map<String, Map<String, String>> _translations = {
     'HINT_PRODUCT_NAME': 'Wpisz nazwę produktu...',
     'VALIDATION_PRODUCT_NAME_REQUIRED': 'Wpisz nazwę produktu',
     'VALIDATION_PRODUCT_NAME_MIN_LENGTH': 'Nazwa musi mieć co najmniej 2 znaki',
+    'FORM_CREATE_ISSUE_LIST': 'Utwórz listę wydania',
+    'FORM_CREATE_ISSUE_LIST_HELPER':
+        'Ten produkt zostanie dodany jako pierwsza pozycja listy.',
 
     // ── Manual product ──
     'MANUAL_TITLE': 'Dodaj produkt ręcznie',
@@ -446,6 +453,10 @@ const Map<String, Map<String, String>> _translations = {
     'SCANNER_SWITCH_CAMERA': 'Switch camera',
     'SCANNER_CODE_DETECTED': 'Code detected',
     'SCANNER_INSTRUCTION': 'Point camera at code',
+    'SCANNER_ACTION_RECEIVE': 'Receive / add',
+    'SCANNER_ACTION_EDIT': 'Edit existing product',
+    'SCANNER_EDIT_NOT_FOUND':
+        'No product found for this code. Use receipt to add it as new.',
 
     // ── Stock ──
     'STOCK_TITLE': 'Stock levels',
@@ -480,6 +491,9 @@ const Map<String, Map<String, String>> _translations = {
     'HINT_PRODUCT_NAME': 'Enter product name...',
     'VALIDATION_PRODUCT_NAME_REQUIRED': 'Enter product name',
     'VALIDATION_PRODUCT_NAME_MIN_LENGTH': 'Name must be at least 2 characters',
+    'FORM_CREATE_ISSUE_LIST': 'Create issue list',
+    'FORM_CREATE_ISSUE_LIST_HELPER':
+        'This product will be added as the first item on the list.',
 
     // ── Manual product ──
     'MANUAL_TITLE': 'Add product manually',

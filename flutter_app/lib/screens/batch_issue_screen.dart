@@ -8,6 +8,7 @@ import '../services/offline_queue_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_ui.dart';
 import '../widgets/driver_search_dialog.dart';
+import '../models/issue_target_preset.dart';
 import 'scanner_screen.dart';
 
 /// Model pozycji wydania w trybie wsadowym.
@@ -39,7 +40,18 @@ class _IssueItem {
 /// Pozwala dodać wiele pozycji (skan / ręcznie) i wydać je
 /// jednym przyciskiem, ustawiając wspólne dane (powód, cel) raz.
 class BatchIssueScreen extends StatefulWidget {
-  const BatchIssueScreen({super.key});
+  final String? initialBarcode;
+  final double initialQuantity;
+  final String? initialIssueReason;
+  final IssueTargetPreset? initialIssueTargetPreset;
+
+  const BatchIssueScreen({
+    super.key,
+    this.initialBarcode,
+    this.initialQuantity = 1,
+    this.initialIssueReason,
+    this.initialIssueTargetPreset,
+  });
 
   @override
   State<BatchIssueScreen> createState() => _BatchIssueScreenState();
@@ -66,7 +78,44 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
   @override
   void initState() {
     super.initState();
+    _applyInitialIssueSettings();
     _loadDrivers();
+    final initialBarcode = widget.initialBarcode?.trim();
+    if (initialBarcode != null && initialBarcode.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _addItemByBarcode(initialBarcode, quantity: widget.initialQuantity);
+      });
+    }
+  }
+
+  void _applyInitialIssueSettings() {
+    final reason = widget.initialIssueReason;
+    if (reason == 'departure' || reason == 'replacement') {
+      _issueReason = reason!;
+    }
+
+    final preset = widget.initialIssueTargetPreset;
+    if (preset == null) return;
+
+    _issueTarget = preset.issueTarget;
+    if (preset.issueTarget == 'vehicle') {
+      _vehiclePlateController.text = preset.vehiclePlate ?? '';
+      _selectedDriverId = null;
+      _selectedDriverName = null;
+      return;
+    }
+
+    if (preset.issueTarget == 'driver') {
+      _vehiclePlateController.clear();
+      _selectedDriverId = preset.driverId;
+      _selectedDriverName = preset.driverName;
+      return;
+    }
+
+    _vehiclePlateController.clear();
+    _selectedDriverId = null;
+    _selectedDriverName = null;
   }
 
   @override
@@ -886,48 +935,13 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
                       return _buildItemCard(item, index);
                     }),
 
-                  const SizedBox(height: 16),
-
-                  // Przyciski dodawania
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _isSubmitting ? null : _showProductPicker,
-                          icon: const Icon(Icons.add_circle_outline),
-                          label: Text(tr('BATCH_ADD_FROM_LIST')),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: _accent,
-                            side: BorderSide(color: _accent.withAlpha(120)),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _isSubmitting ? null : _scanAndAdd,
-                          icon: const Icon(Icons.qr_code_scanner),
-                          label: Text(tr('BATCH_SCAN_ADD')),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white70,
-                            side: BorderSide(color: Colors.white.withAlpha(40)),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
                   const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
+
+          _buildAddActionsBar(includeBottomSafeArea: pendingCount == 0),
 
           // Dolny pasek z przyciskiem wydania
           if (pendingCount > 0)
@@ -971,6 +985,56 @@ class _BatchIssueScreenState extends State<BatchIssueScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAddActionsBar({required bool includeBottomSafeArea}) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, includeBottomSafeArea ? 24 : 12),
+      decoration: BoxDecoration(
+        color: _cardBg,
+        border: Border(top: BorderSide(color: Colors.white.withAlpha(20))),
+      ),
+      child: SafeArea(
+        top: false,
+        bottom: includeBottomSafeArea,
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _isSubmitting ? null : _showProductPicker,
+                icon: const Icon(Icons.add_circle_outline),
+                label: Text(tr('BATCH_ADD_FROM_LIST')),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _accent,
+                  side: BorderSide(color: _accent.withAlpha(120)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _isSubmitting ? null : _scanAndAdd,
+                icon: const Icon(Icons.qr_code_scanner),
+                label: Text(tr('BATCH_SCAN_ADD')),
+                style: FilledButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: _accent,
+                  disabledBackgroundColor: _accent.withAlpha(80),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -10,6 +10,7 @@ import '../services/offline_queue_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_ui.dart';
 import '../widgets/driver_search_dialog.dart';
+import 'batch_issue_screen.dart';
 
 /// Ekran formularza ruchu magazynowego (przyjęcie / wydanie)
 /// po zeskanowaniu kodu kreskowego.
@@ -503,6 +504,29 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     );
   }
 
+  Future<void> _openBatchIssueWithCurrentProduct() async {
+    final vehiclePlate = _vehiclePlateController.text.trim();
+    final preset = IssueTargetPreset(
+      issueTarget: _issueTarget,
+      vehiclePlate: _issueTarget == 'vehicle' && vehiclePlate.isNotEmpty
+          ? vehiclePlate
+          : null,
+      driverId: _issueTarget == 'driver' ? _selectedDriverId : null,
+      driverName: _issueTarget == 'driver' ? _selectedDriverName : null,
+    );
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BatchIssueScreen(
+          initialBarcode: _resolvedBarcode,
+          initialIssueReason: _issueReason,
+          initialIssueTargetPreset: preset,
+        ),
+      ),
+    );
+  }
+
   static const Color _accent = AppColors.accent;
   static const Color _darkBg = AppColors.darkBg;
   static const Color _cardBg = AppColors.cardBg;
@@ -873,6 +897,27 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                             );
                           },
                         ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed:
+                      _isChecking ? null : _openBatchIssueWithCurrentProduct,
+                  icon: const Icon(Icons.playlist_add),
+                  label: Text(tr('FORM_CREATE_ISSUE_LIST')),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _accent,
+                    side: BorderSide(color: _accent.withAlpha(140)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  tr('FORM_CREATE_ISSUE_LIST_HELPER'),
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 16),
                 Divider(color: Colors.white.withAlpha(30)),
                 const SizedBox(height: 12),
